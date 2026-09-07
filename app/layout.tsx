@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "JOBTIME | 채용 마감 관리",
-  description: "지원 기업의 최신 채용공고와 모집 시작·마감 일시를 정리합니다.",
+  title: "JOBTIME | 나의 취업 캘린더",
+  description: "내가 선택한 공고와 서류·시험·면접 일정을 함께 관리하는 개인 취업 캘린더",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

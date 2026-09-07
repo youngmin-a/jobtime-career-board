@@ -1,5 +1,5 @@
-import {env} from "cloudflare:workers";import type {Store} from "./jobs";
-const fresh=():Store=>({version:1,companies:[],postings:[],scans:[]});
-const processState=globalThis as typeof globalThis&{jobsWriteQueue?:Promise<unknown>};
-export async function readStore():Promise<Store>{const row=await env.DB.prepare("SELECT payload FROM app_state WHERE id = ?").bind(1).first<{payload:string}>();if(!row)return fresh();const value=JSON.parse(row.payload);if(value.version!==1||!Array.isArray(value.companies)||!Array.isArray(value.postings))throw new Error("저장된 공고 정보를 읽지 못했습니다.");return value}
-export async function updateStore(change:(state:Store)=>Store|Promise<Store>):Promise<Store>{const action=(processState.jobsWriteQueue??Promise.resolve()).catch(()=>{}).then(async()=>{const updated=await change(await readStore());await env.DB.prepare("INSERT INTO app_state (id,payload,updated_at) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at").bind(1,JSON.stringify(updated),new Date().toISOString()).run();return updated});processState.jobsWriteQueue=action;return action}
+import {env} from "cloudflare:workers";
+import {repository} from "./repository";
+export const readStore=()=>repository((env as unknown as {DB:D1Database}).DB).read();
+export const readBackup=(id:string)=>repository((env as unknown as {DB:D1Database}).DB).backup(id);
+export const updateStore:ReturnType<typeof repository>["update"]=(revision,change)=>repository((env as unknown as {DB:D1Database}).DB).update(revision,change);

@@ -8,6 +8,13 @@
       "when": 1788778549126,
       "tag": "0000_regular_xavin",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1788780180663,
+      "tag": "0001_windy_vargas",
+      "breakpoints": true
     }
   ]
 }

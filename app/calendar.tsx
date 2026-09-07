@@ -1,0 +1,20 @@
+"use client";
+import {useMemo,useState} from "react";
+import {addDays,eventDate,eventLabels,eventsOn,type CalendarEvent} from "@/lib/applications";
+import {kstDate,formatPoint} from "@/lib/jobs";
+export function Calendar({events,onOpen}:{events:CalendarEvent[];onOpen:(e:CalendarEvent)=>void}){
+ const [view,setView]=useState("month"),[date,setDate]=useState(kstDate()),[company,setCompany]=useState(""),[types,setTypes]=useState<string[]>(Object.keys(eventLabels)),[selected,setSelected]=useState(kstDate());
+ const filtered=useMemo(()=>events.filter(e=>(!company||e.companyName===company)&&types.includes(e.type)),[events,company,types]);
+ const first=date.slice(0,7)+"-01",day=new Date(first+"T12:00:00Z").getUTCDay();
+ const start=view==="month"?addDays(first,-day):addDays(date,-new Date(date+"T12:00:00Z").getUTCDay());
+ const days=Array.from({length:view==="month"?42:7},(_,i)=>addDays(start,i));
+ const monthEnd=new Date(Date.UTC(Number(first.slice(0,4)),Number(first.slice(5,7)),0,12)).toISOString().slice(0,10);
+ const list=filtered.filter(e=>{const end=e.schedule.end?.date??eventDate(e);return eventDate(e)<=monthEnd&&end>=first});
+ function move(n:number){if(view==="week")setDate(addDays(date,7*n));else{const d=new Date(first+"T12:00:00Z");d.setUTCMonth(d.getUTCMonth()+n);setDate(d.toISOString().slice(0,10))}}
+ function chip(e:CalendarEvent){return <button key={e.id} type="button" className={"event-chip "+e.type} title={e.companyName+" · "+e.postingTitle+" · "+e.title} onClick={()=>onOpen(e)}><span>{eventLabels[e.type]}{e.schedule.tentative?" · 예정":""}</span><strong>{e.companyName} · {e.title}</strong><small>{formatPoint(e.schedule.start??e.schedule.end)}{e.schedule.end&&e.schedule.start?" ~ "+formatPoint(e.schedule.end):""}</small></button>}
+ return <section className="calendar"><div className="calendar-toolbar"><div className="tabs">{[["month","월간"],["week","주간"],["list","일정 목록"]].map(([v,l])=><button key={v} aria-pressed={view===v} className={view===v?"active":""} onClick={()=>setView(v)}>{l}</button>)}</div><div className="row-actions"><button onClick={()=>move(-1)} aria-label="이전 기간">←</button><input aria-label="기준 날짜" type="date" value={date} onChange={e=>e.target.value&&setDate(e.target.value)}/><button onClick={()=>move(1)} aria-label="다음 기간">→</button><button onClick={()=>{setDate(kstDate());setSelected(kstDate())}}>오늘</button></div></div>
+ <div className="calendar-filters"><label>기업<select value={company} onChange={e=>setCompany(e.target.value)}><option value="">전체 기업</option>{[...new Set(events.map(e=>e.companyName))].map(c=><option key={c}>{c}</option>)}</select></label><div className="type-filters">{Object.entries(eventLabels).map(([v,l])=><label key={v} className="check"><input type="checkbox" checked={types.includes(v)} onChange={e=>setTypes(e.target.checked?[...types,v]:types.filter(t=>t!==v))}/>{l}</label>)}</div></div>
+ <h2>{date.slice(0,4)}년 {Number(date.slice(5,7))}월 {view==="week"?"· "+start+"부터 7일":""}</h2>
+ {view==="list"?<div className="agenda">{list.length?list.map(chip):<p className="empty">이 기간에 표시할 일정이 없습니다.</p>}</div>:<><div className={"calendar-grid "+(view==="week"?"week-grid":"")}>{days.map(d=>{const es=eventsOn(filtered,d);return <div className={"day-cell "+(d===kstDate()?"today ":"")+(d.slice(0,7)!==date.slice(0,7)?"outside":"")} key={d}><button className="day-number" onClick={()=>setSelected(d)} aria-label={d+" 일정 "+es.length+"개"}>{Number(d.slice(8))}<small>{["일","월","화","수","목","금","토"][new Date(d+"T12:00:00Z").getUTCDay()]}</small></button><div className="cell-events">{es.slice(0,view==="month"?3:1000).map(chip)}{view==="month"&&es.length>3&&<button className="more" onClick={()=>setSelected(d)}>+{es.length-3}개 더보기</button>}</div><button className="mobile-count" onClick={()=>setSelected(d)}>{es.length?es.length+"개":""}</button></div>})}</div><div className="day-list"><h3>{selected} 일정</h3>{eventsOn(filtered,selected).length?eventsOn(filtered,selected).map(chip):<p className="hint">등록된 일정이 없습니다.</p>}</div></>}
+ </section>
+}

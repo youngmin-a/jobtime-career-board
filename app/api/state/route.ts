@@ -1,48 +1,27 @@
-import { readStore, updateStore } from "@/lib/store";
-import { BANKS, validPoint, pointMs, type DatePoint, type Posting } from "@/lib/jobs";
-import { allowMutation, failure } from "@/lib/http";
-export const runtime="nodejs";
+import {readStore,updateStore,readBackup} from "@/lib/store";
+import {Conflict} from "@/lib/repository";
+import {validateApplication,fromOfficial,officialCompany,type Application} from "@/lib/applications";
+import {fetchCompany} from "@/lib/providers";
+import {allowMutation} from "@/lib/http";
 export const dynamic="force-dynamic";
-export async function GET() { try{return Response.json(await readStore());}catch(e){return failure(e,500);} }
-export async function POST(request:Request) {
-  try {
-    allowMutation(request);
-    const body=await request.text();if(body.length>20000)throw new Error("입력 내용이 너무 깁니다.");
-    const input=JSON.parse(body);
-    const state=await updateStore(state=>{
-      if(input.action==="add-selected") {
-        const bank=BANKS.find(b=>b.id===input.provider);if(!bank)throw new Error("지원하지 않는 공식 채용 사이트입니다.");
-        const candidate=input.posting as Posting;if(!candidate||typeof candidate!=="object"||typeof candidate.id!=="string"||typeof candidate.title!=="string"||candidate.title.length>200)throw new Error("선택한 공고 정보를 확인해주세요.");
-        const url=new URL(candidate.url);const allowed=bank.id==="kb"?url.hostname==="kbstar.careerlink.kr":bank.id==="nh"?url.hostname==="nhbank.incruit.com":["ibk.incruit.com","ibk3.incruit.com","ibk4.incruit.com"].includes(url.hostname);
-        if(url.protocol!=="https:"||!allowed||!validPoint(candidate.start)||!validPoint(candidate.end))throw new Error("공식 공고 정보를 확인해주세요.");
-        if(!state.companies.some(c=>c.id===bank.id))state.companies.push({id:bank.id,name:bank.name,provider:bank.id});
-        if(state.postings.some(p=>p.id===candidate.id))throw new Error("이미 추가한 공고입니다.");
-        state.postings.push({...candidate,companyId:bank.id,source:bank.scope,kind:"official",saved:true,stage:"관심",notes:""});
-      }else if(input.action==="remove-posting") {
-        const before=state.postings.length;state.postings=state.postings.filter(p=>p.id!==input.id);if(before===state.postings.length)throw new Error("공고를 찾지 못했습니다.");
-        state.companies=state.companies.filter(c=>state.postings.some(p=>p.companyId===c.id));
-      }else if(input.action==="update-posting") {
-        const p=state.postings.find(p=>p.id===input.id);if(!p)throw new Error("공고를 찾지 못했습니다.");
-        if(typeof input.saved==="boolean")p.saved=input.saved;
-        if(input.stage!==undefined) {if(!["관심","지원 준비","지원 완료"].includes(input.stage))throw new Error("올바른 지원 상태를 선택해주세요.");p.stage=input.stage;}
-        if(input.notes!==undefined) {if(typeof input.notes!=="string"||input.notes.length>2000)throw new Error("메모는 2,000자까지 입력할 수 있습니다.");p.notes=input.notes;}
-      }else if(input.action==="add-posting") {
-        if(!state.companies.some(c=>c.id===input.companyId))throw new Error("기업을 선택해주세요.");
-        if(typeof input.title!=="string" || !input.title.trim() || input.title.length>200)throw new Error("공고 제목을 1~200자로 입력해주세요.");
-        if(typeof input.url!=="string" || input.url.length>2000)throw new Error("공고 주소를 입력해주세요.");
-        const url=new URL(input.url);if(url.protocol!=="https:"||url.username||url.password)throw new Error("https로 시작하는 공고 주소를 입력해주세요.");
-        for(const key of ["start","end"] as const) {
-          const point=input[key] as DatePoint|null;
-          if(point!==null && (!point || typeof point!=="object" || typeof point.date!=="string"))throw new Error("날짜 입력을 확인해주세요.");
-          if(!validPoint(point))throw new Error("유효한 날짜와 시간을 입력해주세요.");
-        }
-        if(input.start&&input.end&&(input.start.date>input.end.date||input.start.time&&input.end.time&&pointMs(input.start)>pointMs(input.end)))throw new Error("마감일시는 시작일시보다 늦어야 합니다.");
-        if(state.postings.some(p=>p.companyId===input.companyId&&p.url===url.href))throw new Error("이미 등록된 공고 주소입니다.");
-        const p:Posting={id:crypto.randomUUID(),companyId:input.companyId,title:input.title.trim(),url:url.href,start:input.start,end:input.end,source:"직접 입력",evidence:"사용자가 직접 입력한 일정입니다. 공식 원문과 대조해주세요.",checkedAt:new Date().toISOString(),kind:"manual",saved:true,stage:"관심",notes:""};
-        state.postings.push(p);
-      }else throw new Error("지원하지 않는 요청입니다.");
-      return state;
-    });
-    return Response.json(state);
-  }catch(e){return failure(e);}
+export async function GET(){try{return Response.json(await readStore(),{headers:{"Cache-Control":"no-store"}})}catch{return Response.json({error:"저장 데이터를 읽지 못했습니다. 기존 데이터는 보존됩니다."},{status:500})}}
+export async function POST(request:Request){
+ try{
+  allowMutation(request);const raw=await request.text();if(raw.length>500000)throw new Error("입력 크기가 너무 큽니다.");const input=JSON.parse(raw);
+  if(!Number.isSafeInteger(input.revision))throw new Error("저장 버전을 확인해주세요.");
+  let official:Application|undefined;
+  const backup=input.action==="restore-backup"?await (async()=>{if(input.confirm!=="RESTORE"||typeof input.backupId!=="string"||input.backupId.length>100)throw new Error("복구 대상과 확인 값을 입력해주세요.");return readBackup(input.backupId)})():null;
+  if(input.action==="add-selected"){const bank=officialCompany(input.provider);if(!bank)throw new Error("지원하지 않는 공식 출처입니다.");const result=await fetchCompany({id:bank.id,name:bank.name,provider:bank.id});const found=result.postings.find(p=>p.id===input.postingId);if(!found)throw new Error("공식 공고가 변경되었습니다. 다시 검색해주세요.");official=fromOfficial(found,bank.name,bank.id)}
+  const state=await updateStore(input.revision,state=>{
+   if(backup){state.applications=backup.applications;return state}
+   if(input.action==="delete"){if(!state.applications.some(a=>a.id===input.id))throw new Error("공고를 찾지 못했습니다.");state.applications=state.applications.filter(a=>a.id!==input.id);return state}
+   if(!["save","add-selected"].includes(input.action))throw new Error("지원하지 않는 요청입니다.");
+   const a:Application=official??input.application;validateApplication(a);
+   const index=state.applications.findIndex(p=>p.id===a.id),existing=state.applications[index];
+   if(!existing&&state.applications.some(p=>(a.postingUrl&&p.postingUrl===a.postingUrl)||(p.companyName.trim()===a.companyName.trim()&&p.postingTitle.trim()===a.postingTitle.trim()))&&!input.allowDuplicate)throw new Error("DUPLICATE:비슷한 공고가 있습니다. 별도 차수·직무라면 중복 등록을 허용하세요.");
+   if(existing){a.origin=existing.origin;a.provider=existing.provider;a.officialPostingId=existing.officialPostingId;a.evidence=existing.evidence;a.officialCheckedAt=existing.officialCheckedAt;a.officialRecruitmentSnapshot=existing.officialRecruitmentSnapshot;a.createdAt=existing.createdAt;a.recruitmentOrigin=existing.origin==="official"?(JSON.stringify(a.recruitment)===JSON.stringify(existing.officialRecruitmentSnapshot)?"official":"user_override"):"manual"}
+   else if(!official){a.origin="manual";a.provider=null;a.officialPostingId=null;a.evidence=null;a.officialCheckedAt=null;a.officialRecruitmentSnapshot=null;a.recruitmentOrigin="manual";a.createdAt=new Date().toISOString()}
+   a.updatedAt=new Date().toISOString();if(index<0)state.applications.push(a);else state.applications[index]=a;return state;
+  });return Response.json(state);
+ }catch(e){const message=e instanceof Error?e.message:"저장 실패";return Response.json({error:message},{status:e instanceof Conflict?409:400})}
 }
