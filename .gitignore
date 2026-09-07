@@ -45,3 +45,8 @@ next-env.d.ts
 trash-can/
 *.log
 .claude/settings.local.json
+.local-data/
+work/
+.vinext/
+.wrangler/
+dist/

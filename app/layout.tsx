@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "나의 바이브코딩 작업실",
-  description: "아이디어를 작은 앱으로 만드는 첫 번째 프로젝트",
+  title: "JOBTIME | 채용 마감 관리",
+  description: "지원 기업의 최신 채용공고와 모집 시작·마감 일시를 정리합니다.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
