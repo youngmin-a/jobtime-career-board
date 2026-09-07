@@ -47,3 +47,6 @@ PRD.md, DESIGN.md, PLAN.md, MIGRATION.md, README.md, package.json, tsconfig.json
 ## 배포
 이 기록은 검증 완료 후 배포 직전 작성했다. 최종 배포 및 운영 API 확인 결과는 DEPLOYMENT.md에 기록한다.
 토큰 재설정은 사용하지 않았다.
+
+## 2026-09-08 리디자인 검증
+도메인 테스트 15개, typecheck, lint, production build 통과. 실제 칸반 드래그 후 저장 및 기존 전형 완료 상태 보존 확인. 모집 기간 반복 제거와 실제 전형 일정 표시 확인. 현대자동차·청년인턴·우리은행 실제 검색, 선택한 한 건 편집 저장 및 삭제 확인. 기존 로컬 공고 보존, 검증용 공고 정리 완료. 공개 전환 결과는 DEPLOYMENT.md에 기록.

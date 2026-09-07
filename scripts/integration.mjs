@@ -36,10 +36,11 @@ if(process.argv[2]==='setup'){
  const after=await post({action:'delete',id:a.id,revision:s.revision});assert.equal(after.applications.length,s.applications.length-1);assert.deepEqual(after.applications,s.applications.filter(x=>x.id!==a.id));assert.deepEqual(await get(),after);
  console.log('PASS reload/restart persistence, shared calendar data, delete only test record; original records unchanged');
 }else if(process.argv[2]==='official'){
- const before=await get();const r=await fetch(base+'/api/search',{method:'POST',headers,body:JSON.stringify({query:'기업은행'})}),found=await r.json();assert.equal(r.status,200);assert.ok(found.postings.length);assert.deepEqual(await get(),before);
- const selected=found.postings[0],s=await post({action:'add-selected',revision:before.revision,provider:found.provider,postingId:selected.id,allowDuplicate:true});
+ const before=await get();const r=await fetch(base+'/api/search',{method:'POST',headers,body:JSON.stringify({query:'기업은행'})}),found=await r.json();assert.equal(r.status,200);assert.ok(found.candidates.length);assert.deepEqual(await get(),before);
+ const selected=found.candidates.find(c=>c.provider==="ibk"),s=await post({action:'add-selected',revision:before.revision,provider:selected.provider,postingId:selected.id,allowDuplicate:true});
  const a=s.applications.find(a=>!before.applications.some(b=>b.id===a.id));assert.ok(a);assert.equal(s.applications.length,before.applications.length+1);assert.equal(a.officialPostingId,selected.id);assert.equal(a.postingUrl,selected.url);assert.deepEqual(a.recruitment.end,point(selected.end));
  const after=await post({action:'delete',id:a.id,revision:s.revision});assert.deepEqual(after.applications,before.applications);console.log('PASS official search has no writes; exactly one selected posting saved with original deadline; test selection removed');
 }else if(process.argv[2]==='search'){
- for(const query of ['국민은행','기업은행','농협은행']){const r=await fetch(base+'/api/search',{method:'POST',headers,body:JSON.stringify({query})});const s=await r.json();assert.equal(r.status,200,JSON.stringify(s));assert.ok(Array.isArray(s.postings));console.log(query+': '+s.postings.length+' official candidates'+(s.warning?' (provider warning)':''))}
+ for(const query of ['국민은행','기업은행','농협은행']){const r=await fetch(base+'/api/search',{method:'POST',headers,body:JSON.stringify({query})});const s=await r.json();assert.equal(r.status,200,JSON.stringify(s));assert.ok(Array.isArray(s.candidates));console.log(query+': '+s.candidates.length+' official candidates'+(s.warnings?.length?' (provider warning)':''))}
 }else throw new Error('Use setup, verify or search');
+

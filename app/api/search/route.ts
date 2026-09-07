@@ -1,5 +1,5 @@
-import { allowMutation, failure } from "@/lib/http";
-import { BANKS, resolveBank } from "@/lib/jobs";
-import { fetchCompany } from "@/lib/providers";
-export const runtime="nodejs";export const dynamic="force-dynamic";
-export async function POST(request:Request){try{allowMutation(request);const body=JSON.parse(await request.text());if(typeof body.query!=="string"||!body.query.trim()||body.query.length>2000)throw new Error("기업명 또는 공식 공고 주소를 입력해주세요.");const query=body.query.trim();let bank=resolveBank(query);let exactUrl:string|undefined;try{const url=new URL(query);exactUrl=url.href;if(url.hostname==="kbstar.careerlink.kr")bank=BANKS.find(b=>b.id==="kb");else if(url.hostname.includes("ibk")&&url.hostname.endsWith("incruit.com"))bank=BANKS.find(b=>b.id==="ibk");else if(url.hostname==="nhbank.incruit.com")bank=BANKS.find(b=>b.id==="nh");}catch{}if(!bank)throw new Error("현재는 국민은행, 기업은행, 농협은행의 공식 채용 사이트를 지원합니다.");const company={id:bank.id,name:bank.name,provider:bank.id};const result=await fetchCompany(company);let postings=result.postings;if(exactUrl){const target=new URL(exactUrl);const key=target.searchParams.get("projectid")??target.pathname.split("/").filter(Boolean).at(-1);const matches=postings.filter(p=>{const u=new URL(p.url);return p.url===exactUrl||(key&&(u.searchParams.get("projectid")===key||u.pathname.split("/").filter(Boolean).at(-1)===key));});if(matches.length)postings=matches;}return Response.json({provider:bank.id,company:bank.name,postings,warning:result.warning});}catch(e){return failure(e);}}
+import {allowMutation,failure} from '@/lib/http';
+import {searchJobs} from '@/lib/search';
+export const dynamic='force-dynamic';
+export async function POST(request:Request){try{allowMutation(request);const raw=await request.text();if(raw.length>5000)throw new Error('검색어가 너무 깁니다.');const body=JSON.parse(raw);if(typeof body.query!=='string'||!body.query.trim()||body.query.length>2000)throw new Error('기업명 또는 공고 키워드를 입력해주세요.');return Response.json(await searchJobs(body.query.trim()),{headers:{'Cache-Control':'no-store'}})}catch(e){return failure(e)}}
+

@@ -2,7 +2,7 @@ import { load } from "cheerio";
 import { createHash } from "node:crypto";
 import { BANKS, parsePeriod, validPoint, type Company, type DatePoint, type Posting } from "./jobs";
 
-const allowedHosts = new Set(["kbstar.careerlink.kr","api.inhr.co.kr","ibk.incruit.com","ibk3.incruit.com","ibk4.incruit.com","nhbank.incruit.com"]);
+const allowedHosts = new Set(["kbstar.careerlink.kr","api.inhr.co.kr","ibk.incruit.com","ibk3.incruit.com","ibk4.incruit.com","nhbank.incruit.com","jlab.incruit.com"]);
 export async function publicFetch(url: string, init: RequestInit = {}) {
   // 요청 대상은 검증한 공식 출처에 한정한다. 사용자 입력 URL을 서버가 임의로 방문하지 않는다.
   let next = new URL(url);
