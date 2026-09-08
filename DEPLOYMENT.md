@@ -31,3 +31,16 @@ https://jobtime-career-board.bmec3132.chatgpt.site
 실제 운영 D1 장애 주입, 운영 프로세스 강제 재시작, 운영 백업 복구 실행, 모바일 실기기·모든 브라우저 검증은 하지 않았다. 로컬 프로세스 재시작, SQLite 쓰기 실패 주입 및 복구 테스트, PC/모바일 뷰포트 검증은 통과했다.
 
 토큰 재설정은 사용하지 않았다.
+
+## JOBTIME v3 리디자인·공개 전환
+
+2026-09-08 KST. 리디자인과 범용 채용공고 검색을 기존 주소에 반영했다.
+
+- 앱 커밋: 3c842e96402b691390fb377ab0b740cbf12bd190
+- Sites 버전: 3
+- 운영 런타임·저장소: Vinext / Cloudflare Workers / D1 단일 영속 저장소
+- 접근: 공개 조회(public), 수정·삭제는 `JOBTIME_OWNER_ID` 소유자만 가능
+- 검색: 인크루트 공개 검색과 KB·IBK·NH 공식 어댑터. 공개 검색은 최대 20개 후보이며, 날짜·시간이 원문에 없으면 비워 둔다.
+- 검증: 도메인 테스트 15개, typecheck, lint, production build, 실제 칸반 이동 저장, 캘린더·검색·선택 저장 흐름 통과.
+- 공개 전환 후 익명 `GET /`, `GET /api/state`, `GET /api/access`는 200이며 익명 `POST /api/state`는 403이다.
+- 공개 전환 직전 D1 백업을 `backups/pre-redesign-production.json`에 보관했다(Git 제외). 백업 당시 revision 6, 공고 1건.
