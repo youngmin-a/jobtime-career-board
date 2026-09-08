@@ -15,6 +15,13 @@
       "when": 1788780180663,
       "tag": "0001_windy_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788857255831,
+      "tag": "0002_workspace_state",
+      "breakpoints": true
     }
   ]
 }
