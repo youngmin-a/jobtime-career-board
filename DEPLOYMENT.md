@@ -44,3 +44,15 @@ https://jobtime-career-board.bmec3132.chatgpt.site
 - 검증: 도메인 테스트 15개, typecheck, lint, production build, 실제 칸반 이동 저장, 캘린더·검색·선택 저장 흐름 통과.
 - 공개 전환 후 익명 `GET /`, `GET /api/state`, `GET /api/access`는 200이며 익명 `POST /api/state`는 403이다.
 - 공개 전환 직전 D1 백업을 `backups/pre-redesign-production.json`에 보관했다(Git 제외). 백업 당시 revision 6, 공고 1건.
+
+## JOBTIME v4 로그인 없는 개인 작업공간
+
+2026-09-08 KST. GitHub `main` push로 Cloudflare Worker에 자동 배포했다.
+
+- 앱 커밋: 752cb24aec578d7a8e631e5dda81ff58cfe7a8ee
+- Cloudflare 주소: https://jobtime-career-board.bmec3132.workers.dev
+- Actions 실행: 34198674818 (typecheck·lint·test·build·원격 D1 0002·deploy 모두 성공)
+- 저장소: 기존 Cloudflare D1 `env.DB` 단일 저장소 유지. `workspace_state`·`workspace_backups`를 추가하고 레거시 테이블은 보존했다.
+- 데이터 이전: 플랫폼 계정 작업공간 최초 읽기 때만 기존 v2/v1을 백업 후 이전한다. 익명 브라우저는 빈 작업공간으로 시작해 기존 개인 데이터를 읽지 않는다.
+- 공개 접근: 로그인 없이 누구나 URL에 접속하며, 브라우저별 HttpOnly·Secure·SameSite 쿠키로 CRUD 범위를 분리한다. 다른 브라우저의 공고·전형·일정·메모는 노출되지 않는다.
+- 배포 검증: Worker `GET /api/state` 200, 같은 쿠키 revision 유지, 다른 쿠키 공고 0건, Set-Cookie 보안 속성 확인.
