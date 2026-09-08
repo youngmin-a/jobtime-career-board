@@ -20,5 +20,5 @@ config.d1_databases=[{
   database_id:databaseId,
   migrations_dir:"../../migrations",
 }];
-config.vars={...(config.vars||{}),JOBTIME_PUBLIC_DEMO:"true"};
+config.vars={...config.vars,JOBTIME_PUBLIC_DEMO:"true"};
 await writeFile(path,JSON.stringify(config,null,2)+"\n");

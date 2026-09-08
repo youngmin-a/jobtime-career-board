@@ -43,6 +43,20 @@ export const eventDate=(e:CalendarEvent)=>(e.schedule.start??e.schedule.end)!.da
 export function isUpcoming(e:CalendarEvent,now=Date.now()){const p=e.schedule.end??e.schedule.start!;return p.time?pointMs(p)>=now:p.date>=kstDate(now)}
 export function eventsOn(events:CalendarEvent[],date:string){return events.filter(e=>{const start=eventDate(e),end=e.schedule.end?.date??start;return start<=date&&end>=date})}
 export function addDays(date:string,n:number){const d=new Date(date+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function shiftPoint(p:Point|null,anchor:string,target:string){if(!p)return null;const delta=Math.round((Date.parse(target+"T12:00:00Z")-Date.parse(anchor+"T12:00:00Z"))/86400000);return {...p,date:addDays(p.date,delta)}}
+function shiftRange(r:Range,anchor:string,target:string):Range{return{...r,start:shiftPoint(r.start,anchor,target),end:shiftPoint(r.end,anchor,target)}}
+export function moveCalendarEvent(application:Application,event:CalendarEvent,targetDate:string):Application{
+ const next=structuredClone(application),anchor=eventDate(event);
+ if(!validPoint({date:targetDate,time:null}))throw new Error("변경할 날짜를 확인해주세요.");
+ if(targetDate===anchor)return next;
+ if(event.type==="recruitment_start")next.recruitment={...next.recruitment,start:shiftPoint(next.recruitment.start,anchor,targetDate)};
+ else if(event.type==="recruitment_deadline")next.recruitment={...next.recruitment,end:shiftPoint(next.recruitment.end,anchor,targetDate)};
+ else if(event.type==="personal"&&event.personalId){const item=next.personalEvents.find(x=>x.id===event.personalId);if(!item)throw new Error("개인 일정을 찾지 못했습니다.");item.schedule=shiftRange(item.schedule,anchor,targetDate)}
+ else if(event.stageId){const stage=next.stages.find(x=>x.id===event.stageId);if(!stage)throw new Error("전형을 찾지 못했습니다.");if(event.type==="result_expected")stage.resultExpectedAt=shiftPoint(stage.resultExpectedAt,anchor,targetDate);else if(event.type==="result_confirmed")stage.resultConfirmedAt=shiftPoint(stage.resultConfirmedAt,anchor,targetDate);else stage.schedule=shiftRange(stage.schedule,anchor,targetDate)}
+ else throw new Error("이 일정을 변경할 수 없습니다.");
+ if(next.origin!=="manual"&&(event.type==="recruitment_start"||event.type==="recruitment_deadline"))next.recruitmentOrigin="user_override";
+ validateApplication(next);return next;
+}
 export function due(a:Application,now=Date.now()){const p=a.recruitment.end;if(!p)return{label:"마감일 미공개",closed:false,urgent:false};const days=Math.round((Date.parse(p.date)-Date.parse(kstDate(now)))/86400000);const closed=p.time!==null?pointMs(p)<=now:days<0;return{label:closed?"모집 마감":days===0?"D-day":days>0?"D-"+days:"D-day",closed,urgent:!closed&&(p.time!==null?pointMs(p)-now<=72*3600000:days<=3)}}
 export function officialCompany(provider:string){return BANKS.find(b=>b.id===provider)}
 

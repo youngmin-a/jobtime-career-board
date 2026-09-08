@@ -7,7 +7,7 @@
 개발: npm run dev → http://localhost:3000
 검증: npm run test, npm run typecheck, npm run lint, npm run build
 PRD.md는 제품 정의, DESIGN.md는 실제 설계, MIGRATION.md는 백업·복구, CHECK.md는 검증 결과입니다.
-운영 사이트는 .openai/hosting.json의 기존 Sites 프로젝트를 사용합니다. 로컬 .wrangler 데이터는 운영 D1과 별도입니다
+기존 Sites와 Cloudflare Worker는 같은 코드베이스를 사용합니다. 로그인 없는 방문자는 HttpOnly 브라우저 쿠키로 개인 작업공간을 만들며, 계정 인증이 있는 기존 소유자는 해시된 계정 작업공간으로 기존 데이터를 이전합니다. 로컬 `.wrangler` 데이터는 운영 D1과 별도입니다.
 ## GitHub + Cloudflare Workers 배포
 .github/workflows/deploy-cloudflare.yml이 main push마다 typecheck·lint·test·build를 수행한 뒤 Cloudflare D1 마이그레이션과 Worker 배포를 실행합니다. GitHub 저장소와 Cloudflare 계정 연결이 완료되면 다음 Actions secrets가 필요합니다.
 - CLOUDFLARE_API_TOKEN: Workers 및 D1 배포 권한을 가진 토큰

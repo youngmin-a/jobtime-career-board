@@ -7,8 +7,10 @@ const {newApplication,point,calendarEvents}=await import('../.test-output/applic
 const base=process.env.JOBTIME_TEST_URL||'http://localhost:3000';
 const headers={'Content-Type':'application/json',Origin:base};
 if(process.env.JOBTIME_TEST_TOKEN)headers['OAI-Sites-Authorization']='Bearer '+process.env.JOBTIME_TEST_TOKEN;
-async function get(){const r=await fetch(base+'/api/state',{headers});assert.equal(r.status,200);return r.json()}
-async function post(body,status=200){const r=await fetch(base+'/api/state',{method:'POST',headers,body:JSON.stringify(body)}),s=await r.json();assert.equal(r.status,status,JSON.stringify(s));return s}
+let cookie='';
+async function request(path,init={}){const requestHeaders={...headers,...init.headers};if(cookie)requestHeaders.cookie=cookie;const r=await fetch(base+path,{...init,headers:requestHeaders});const setCookie=r.headers.get('set-cookie');if(setCookie)cookie=setCookie.split(';',1)[0];return r}
+async function get(){const r=await request('/api/state');assert.equal(r.status,200);return r.json()}
+async function post(body,status=200){const r=await request('/api/state',{method:'POST',body:JSON.stringify(body)}),s=await r.json();assert.equal(r.status,status,JSON.stringify(s));return s}
 const marker='.test-output/persistence.json';
 if(process.argv[2]==='setup'){
  const before=await get();await writeFile('.test-output/before-integration.json',JSON.stringify(before));
@@ -36,11 +38,11 @@ if(process.argv[2]==='setup'){
  const after=await post({action:'delete',id:a.id,revision:s.revision});assert.equal(after.applications.length,s.applications.length-1);assert.deepEqual(after.applications,s.applications.filter(x=>x.id!==a.id));assert.deepEqual(await get(),after);
  console.log('PASS reload/restart persistence, shared calendar data, delete only test record; original records unchanged');
 }else if(process.argv[2]==='official'){
- const before=await get();const r=await fetch(base+'/api/search',{method:'POST',headers,body:JSON.stringify({query:'기업은행'})}),found=await r.json();assert.equal(r.status,200);assert.ok(found.candidates.length);assert.deepEqual(await get(),before);
+ const before=await get();const r=await request('/api/search',{method:'POST',body:JSON.stringify({query:'기업은행'})}),found=await r.json();assert.equal(r.status,200);assert.ok(found.candidates.length);assert.deepEqual(await get(),before);
  const selected=found.candidates.find(c=>c.provider==="ibk"),s=await post({action:'add-selected',revision:before.revision,provider:selected.provider,postingId:selected.id,allowDuplicate:true});
  const a=s.applications.find(a=>!before.applications.some(b=>b.id===a.id));assert.ok(a);assert.equal(s.applications.length,before.applications.length+1);assert.equal(a.officialPostingId,selected.id);assert.equal(a.postingUrl,selected.url);assert.deepEqual(a.recruitment.end,point(selected.end));
  const after=await post({action:'delete',id:a.id,revision:s.revision});assert.deepEqual(after.applications,before.applications);console.log('PASS official search has no writes; exactly one selected posting saved with original deadline; test selection removed');
 }else if(process.argv[2]==='search'){
- for(const query of ['국민은행','기업은행','농협은행']){const r=await fetch(base+'/api/search',{method:'POST',headers,body:JSON.stringify({query})});const s=await r.json();assert.equal(r.status,200,JSON.stringify(s));assert.ok(Array.isArray(s.candidates));console.log(query+': '+s.candidates.length+' official candidates'+(s.warnings?.length?' (provider warning)':''))}
+ for(const query of ['국민은행','기업은행','농협은행']){const r=await request('/api/search',{method:'POST',body:JSON.stringify({query})});const s=await r.json();assert.equal(r.status,200,JSON.stringify(s));assert.ok(Array.isArray(s.candidates));console.log(query+': '+s.candidates.length+' official candidates'+(s.warnings?.length?' (provider warning)':''))}
 }else throw new Error('Use setup, verify or search');
 

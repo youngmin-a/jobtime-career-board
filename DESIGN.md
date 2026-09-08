@@ -9,12 +9,13 @@
 - lib/applications.ts: v2 타입, 검증, v1 변환, D-day, 캘린더 파생.
 - lib/jobs.ts: 기존 공식 타입·기간 분석·KST 유틸리티.
 - lib/providers.ts: 기존 KB/IBK/NH 공식 조회 어댑터 유지.
-- lib/repository.ts: D1 백업·이전·revision 원자 갱신.
-- lib/store.ts: Cloudflare Workers env.DB 연결.
+- lib/repository.ts: 작업공간별 D1 백업·이전·revision 원자 갱신.
+- lib/workspace.ts: HttpOnly 브라우저 쿠키 또는 플랫폼 사용자 해시로 작업공간을 결정한다.
+- lib/store.ts: Cloudflare Workers env.DB 연결과 작업공간 응답 헤더.
 - db/schema.ts / drizzle: D1 스키마와 추가형 SQL 마이그레이션.
 
 ## 2. 화면과 인터랙션
-실제 경로 / 안에서 대시보드·취업 캘린더·내 공고를 탭으로 전환한다. 동일 native dialog 편집기를 공유한다. 별도 /applications 또는 /calendar 라우트는 만들지 않았다.
+실제 경로 / 안에서 대시보드·취업 캘린더·내 공고를 탭으로 전환한다. 동일 native dialog 편집기를 공유한다. 별도 /applications 또는 /calendar 라우트는 만들지 않았다. 새 공고는 기업명·공고명만 먼저 보이고 상세 입력은 접힌다.
 헤더는 작은 화면에서 두 줄이다. 상세 편집은 기본 정보 2열에서 모바일 1열로 전환한다. 전형은 접이식 상세이며 현재 상태와 이름을 요약한다.
 모달은 native dialog의 포커스 제한과 Escape 처리를 사용하고 닫을 때 기존 포커스로 복귀한다. 미저장 변경이 있으면 닫기 확인을 한다. 저장 요청 중 폼을 잠그고 실패하면 draft를 보존한다.
 브랜드는 밝은 회색 바탕과 흰색 카드, #2563EB 블루 강조, 얇은 테두리와 시스템 글꼴을 사용한다. 공고 상세는 PC 우측 Drawer, 모바일 전체 화면이다. 달력 이벤트는 유형 색상과 텍스트 라벨을 함께 제공한다.
@@ -35,7 +36,7 @@ currentStageId는 적용 가능한 같은 공고 전형 또는 null이다. 전�
 캘린더 이벤트의 applicationId와 stageId/personalId는 원본 편집 대상으로 연결된다. 별도 이벤트 테이블은 없다.
 모집 시작·마감만 recruitment에서 파생한다. 모집 기간 원본은 보존하지만 중간 날짜 이벤트를 만들지 않는다. 전형명에 면접이 있으면 interview, 필기/검사/시험이면 exam, 나머지는 stage로 분류한다. 결과 예정과 확인, 개인 일정은 각 필드에서 파생한다.
 날짜가 없으면 이벤트를 만들지 않는다. 실제 다일 전형·개인 일정의 기간은 종료일까지 포함하여 각 날짜에 표시한다. 월간 42셀, 주간 7일, 목록은 해당 월과 겹치는 일정이다.
-시간이 없는 일정은 시간 미공개로 표시한다. 정확한 시간이 있는 일정은 KST 시점으로 비교한다. 오늘 이미 끝난 시각은 다음 일정에서 제외한다. 모집 마감은 관리 상태를 변경하지 않는다.
+시간이 없는 일정은 시간 미공개로 표시한다. 정확한 시간이 있는 일정은 KST 시점으로 비교한다. 오늘 이미 끝난 시각은 다음 일정에서 제외한다. 모집 마감은 관리 상태를 변경하지 않는다. 편집 가능한 이벤트는 드래그·날짜 입력으로 이동하며 기간과 시각을 보존한다.
 
 ## 5. API와 저장
 - GET /api/state: 현재 v2 상태, Cache-Control:no-store
@@ -51,8 +52,8 @@ currentStageId는 적용 가능한 같은 공고 전형 또는 null이다. 전�
 클라이언트는 편집 초안을 유지하다 저장 성공 응답으로 공통 state를 교체하고 모든 파생 화면을 계산한다. 실패 시 초안과 서버 원본이 유지된다. 409 충돌은 최신 상태를 다시 읽고 사용자가 덮어쓰기 여부를 결정하도록 안내한다.
 
 ## 6. D1와 이전
-운영 단일 저장소는 env.DB이다. app_state는 이전 원본, job_state_v2는 현재 상태, job_backups는 보관 스냅샷이다. payload의 JSON은 D1 안의 직렬화 형식이며 파일 저장소가 아니다.
-드리즐 0000은 그대로 두고 0001에서 v2와 backup 테이블만 추가한다. 최초 read에서만 v1을 변환한다. 백업과 v2 INSERT OR IGNORE를 D1 batch 트랜잭션으로 처리하여 재시도 가능하다.
+운영 단일 저장소는 env.DB이다. app_state와 job_state_v2는 이전 원본, workspace_state는 현재 작업공간 상태, workspace_backups는 작업공간별 보관 스냅샷이다. payload의 JSON은 D1 안의 직렬화 형식이며 파일 저장소가 아니다.
+드리즐 0000·0001과 레거시 테이블은 그대로 두고 0002에서 workspace_state·workspace_backups를 추가한다. 계정 작업공간 최초 read에서만 v1을 변환하며 익명 작업공간은 레거시를 읽지 않는다. 백업과 workspace_state INSERT OR IGNORE를 D1 batch 트랜잭션으로 처리하여 재시도 가능하다.
 일반 write는 revision 일치 조건의 백업 INSERT와 UPDATE를 batch로 실행한다. 다른 요청이 선점하면 변경 행 수 0 → 409다. 손상 데이터는 오류로 중단한다.
 복구도 기존 상태를 백업한 뒤 같은 revision 갱신을 사용한다. 상세 운영 절차는 MIGRATION.md를 따른다.
 
@@ -65,5 +66,4 @@ tests/domain.test.ts는 날짜·상태·이전·캘린더와 실제 SQLite 트�
 - app/search-dialog.tsx와 lib/search.ts: 인크루트 공개 페이지가 실제 사용하는 검색 JSON + 공개 HTML의 JSON 데이터 대체 경로, 60초 캐시, 20개 결과. 기존 세 은행의 공식 어댑터와 통합한다. 고용24는 인증키가 필요해 사용하지 않았다. 유료 서비스 도입 없음.
 - 결과는 Candidate 타입으로 통일하고 URL 중복을 제거한다. inviteStartDt/inviteCloseDt만 모집 날짜로 사용하고 regDate는 사용하지 않는다. 일반 검색의 정확한 시각은 null이다. 페이지 스크립트를 실행하지 않으며 호스트·HTTPS·응답 크기·타임아웃을 제한한다.
 - save-selected는 서버가 선택 provider/id/query로 실제 후보를 다시 확인한 뒤 사용자가 편집한 내용 한 건만 저장한다. Application.origin 및 recruitmentOrigin에 public을 추가하고 sourceName을 선택 필드로 확장했다. 기존 v2 데이터와 D1 스키마는 그대로다.
-- /api/access는 요청별 플랫폼 사용자 ID와 canEdit를 반환한다. JOBTIME_OWNER_ID는 Sites 런타임 설정으로 관리한다. 운영 POST /api/state는 소유자만 허용한다. 공개 방문자에게는 읽기 전용 Drawer를 제공한다. 로컬 Vite 개발 모드만 편집을 허용한다.
-- 공고 데이터 자체는 공개 보드에 표시된다. 사용자별 독립 저장 공간은 이번 범위에 포함하지 않는다.
+- /api/access는 요청별 작업공간 종류와 canEdit를 반환한다. 로그인 없는 브라우저도 자신의 쿠키 작업공간을 편집할 수 있다. account 작업공간은 플랫폼 사용자 ID의 SHA-256 파생값이며 ID 자체를 D1 키로 노출하지 않는다. 공개 URL은 UI와 API 모두 workspace_id로 분리된다.
