@@ -2,8 +2,14 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "JOBTIME | 나의 취업 캘린더",
-  description: "내가 선택한 공고와 서류·시험·면접 일정을 함께 관리하는 개인 취업 캘린더",
+  title: {default: "취준캘린더", template: "%s | 취준캘린더"},
+  description: "공고와 전형 일정을 한눈에.",
+  openGraph: {
+    title: "취준캘린더",
+    siteName: "취준캘린더",
+    description: "공고와 전형 일정을 한눈에.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

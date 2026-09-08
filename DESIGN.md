@@ -1,4 +1,4 @@
-# DESIGN — JOBTIME v2 실제 구현
+# DESIGN — 취준캘린더 실제 구현
 
 기준: PRD.md · 2026-09-08 · KST
 
