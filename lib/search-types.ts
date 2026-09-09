@@ -2,6 +2,7 @@ import {newApplication,point,type Application} from './applications';
 import type {DatePoint} from './jobs';
 import type {SearchBasis} from './search-scope';
 export type Candidate={id:string;provider:string;companyName:string;title:string;role:string;employmentType:string;url:string;start:DatePoint|null;end:DatePoint|null;sourceName:string;sourceKind:'official'|'public';evidence:string;checkedAt:string;searchBasis?:SearchBasis;sourcePage?:number};
+export type WebCandidate={id:string;title:string;url:string;description:string;sourceName:string;companyName?:string};
 export type Selection={provider:string;id:string;query:string;page?:number};
-export type SearchResult={candidates:Candidate[];warnings:string[];query:string;total:number;nextPage?:number|null;scanned?:number;partial?:boolean;failed?:boolean};
+export type SearchResult={candidates:Candidate[];uncertainCandidates?:Candidate[];webCandidates?:WebCandidate[];manualUrl?:string;warnings:string[];query:string;total:number;nextPage?:number|null;scanned?:number;partial?:boolean;failed?:boolean};
 export function candidateApplication(c:Candidate):Application{const a=newApplication(),recruitment={start:point(c.start),end:point(c.end),tentative:false};return{...a,companyName:c.companyName,postingTitle:c.title,role:c.role,employmentType:c.employmentType,postingUrl:c.url,origin:c.sourceKind,provider:c.provider,sourceName:c.sourceName,officialPostingId:c.id,recruitment,recruitmentOrigin:c.sourceKind,officialRecruitmentSnapshot:structuredClone(recruitment),evidence:c.evidence,officialCheckedAt:c.checkedAt,searchBasis:c.searchBasis}}

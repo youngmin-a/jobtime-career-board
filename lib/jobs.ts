@@ -15,9 +15,19 @@ export const BANKS: { id: Provider; name: string; aliases: string[]; url: string
   { id: "ibk", name: "IBK기업은행", aliases: ["기업은행", "ibk기업은행", "ibk"], url: "https://ibk.incruit.com/", scope: "공식 신입·수시 채용 사이트" },
   { id: "nh", name: "NH농협은행", aliases: ["농협은행", "nh농협은행", "농협", "nh"], url: "https://nhbank.incruit.com/", scope: "공식 신규직원 채용 사이트" },
 ];
+export type Institution={id:"kdb"|"imbank"|"fss";name:string;aliases:string[];officialUrls:string[];keywords:string[]};
+export const INSTITUTIONS:Institution[]=[
+ {id:"kdb",name:"한국산업은행",aliases:["산업은행","한국산업은행","kdb산업은행","kdb"],officialUrls:["https://recruit.kdb.co.kr/"],keywords:["일반","일반행원","신입","신입행원","5급"]},
+ {id:"imbank",name:"iM뱅크",aliases:["im뱅크","아이엠뱅크","대구은행","dgb대구은행","dgb"],officialUrls:["https://im.recruiter.co.kr/"],keywords:["일반","일반행원","신입","신입행원","금융일반"]},
+ {id:"fss",name:"금융감독원",aliases:["금융감독원","금감원","fss"],officialUrls:["https://www.fss.or.kr/"],keywords:["5급","신입","일반"]}
+];
+export function resolveInstitution(query:string){
+ const normalized=query.toLowerCase().replace(/\s/g,"");
+ return INSTITUTIONS.find(i=>i.aliases.some(a=>normalized.includes(a.toLowerCase().replace(/\s/g,""))));
+}
 export function resolveBank(name: string) {
   const normalized = name.toLowerCase().replace(/\s/g, "");
-  return BANKS.find(b => b.aliases.includes(normalized));
+  return BANKS.find(b => b.aliases.some(alias=>normalized===alias||normalized.includes(alias)));
 }
 export function kstDate(now = Date.now()) { return new Date(now + 9 * 3600000).toISOString().slice(0, 10); }
 export function validDate(date: string) {
