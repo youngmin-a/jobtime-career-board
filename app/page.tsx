@@ -23,7 +23,7 @@ function Workspace({session,leave,legacyCount}:{session:SessionView;leave:()=>Pr
  async function load(){try{const r=await fetch('/api/state',{cache:'no-store',headers:{'X-Workspace-Session':session.sessionTag}}),s=JSON.parse(await r.text());if(!r.ok)throw new Error(s.error);accept(s);if(alive.current){setCanEdit(true);setError('')}}catch(e){if(alive.current)setError(e instanceof Error?e.message:'데이터를 불러오지 못했습니다.')}}
  useEffect(()=>{void load();const timer=setInterval(()=>setNow(Date.now()),60000);return()=>clearInterval(timer)},[]);
  useEffect(()=>{if(!notice)return;const t=setTimeout(()=>{setNotice('');setUndo(null)},5000);return()=>clearTimeout(t)},[notice]);
- useEffect(()=>{document.title=tab==='calendar'?'캘린더 | 취준캘린더':tab==='all'?'내 공고 | 취준캘린더':'대시보드 | 취준캘린더'},[tab]);
+ useEffect(()=>{document.title=tab==='calendar'?'캘린더 | 취준캘린더':tab==='all'?'내 공고 | 취준캘린더':tab==='board'?'전형 보드 | 취준캘린더':'대시보드 | 취준캘린더'},[tab]);
  async function mutate(body:Record<string,unknown>,optimistic?:Application):Promise<State>{
   if(!current.current||locked.current)throw new Error('진행 중인 저장이 끝난 뒤 다시 시도해주세요.');
   const before=current.current;locked.current=true;setBusy(true);setError('');
