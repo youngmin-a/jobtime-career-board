@@ -2,7 +2,8 @@ import { load } from "cheerio";
 import { createHash } from "node:crypto";
 import { BANKS, parsePeriod, validPoint, type Company, type DatePoint, type Posting } from "./jobs";
 
-const allowedHosts = new Set(["kbstar.careerlink.kr","api.inhr.co.kr","ibk.incruit.com","ibk3.incruit.com","ibk4.incruit.com","nhbank.incruit.com","jlab.incruit.com","job.incruit.com","jrs.jobkorea.co.kr","recruit.kdb.co.kr","im.recruiter.co.kr","shinhan.recruiter.co.kr","www.fss.or.kr"]);
+// 원문 자동 추출을 허용하는 채용·공공기관 출처만 열어 둔다. 검색 결과의 임의 호스트를 서버가 방문하지 않는다.
+const allowedHosts = new Set(["kbstar.careerlink.kr","api.inhr.co.kr","ibk.incruit.com","ibk3.incruit.com","ibk4.incruit.com","nhbank.incruit.com","jlab.incruit.com","job.incruit.com","jrs.jobkorea.co.kr","www.jobkorea.co.kr","recruit.kdb.co.kr","im.recruiter.co.kr","shinhan.recruiter.co.kr","www.fss.or.kr","fine.fss.or.kr","www.kofia.or.kr","www.catch.co.kr","linkareer.com","www.linkareer.com","jasoseol.com","www.jasoseol.com","career.gnu.ac.kr","m.work.go.kr","www.invione.com"]);
 export function safePublicUrl(value:string){
  try{const u=new URL(value);if(u.protocol!=="https:"||u.port||u.username||u.password)return false;const host=u.hostname.toLowerCase();const octets=host.split('.').map(Number);const ipv4=octets.length===4&&octets.every(x=>Number.isInteger(x)&&x>=0&&x<=255);if(host==="localhost"||host.endsWith(".localhost")||host==="127.0.0.1"||host==="0.0.0.0"||host==="::1"||(ipv4&&(octets[0]===10||octets[0]===127||octets[0]===0||octets[0]===192&&octets[1]===168||octets[0]===172&&octets[1]>=16&&octets[1]<=31)))return false;return !!host}
  catch{return false}

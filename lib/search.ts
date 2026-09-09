@@ -14,6 +14,11 @@ export function extractRecruitmentPeriod(source:string){
   const period=parsePeriod(snippet);
   if(period)return period;
  }
+ const pointFromText=(raw:string):DatePoint|null=>{const m=raw.match(/(20\d{2})\s*[.\-/년]\s*(\d{1,2})\s*[.\-/월]\s*(\d{1,2})(?:일)?(?:\s*\([^)]*\))?(?:\s*(오전|오후)?\s*(\d{1,2})(?::|시\s*)(\d{2})?\s*분?)?/);if(!m)return null;let hour=m[5]?Number(m[5]):null;if(hour!==null&&m[4]==='오후'&&hour<12)hour+=12;if(hour!==null&&m[4]==='오전'&&hour===12)hour=0;const time=hour===null?null:`${String(hour).padStart(2,'0')}:${m[6]??'00'}`;const p={date:`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`,time};return validPoint(p)?p:null};
+ const startMatch=text.match(/(?:접수|모집|채용|지원|응시)\s*(?:시작|개시|오픈|부터)\s*[:：]?\s*([^,;|]{0,80})/i);
+ const endMatch=text.match(/(?:접수|모집|채용|지원|응시)\s*(?:마감|종료|까지)\s*[:：]?\s*([^,;|]{0,80})/i);
+ const start=startMatch?pointFromText(startMatch[1]):null,end=endMatch?pointFromText(endMatch[1]):null;
+ if(start&&end)return {start,end,evidence:[startMatch?.[0],endMatch?.[0]].filter(Boolean).join(' · ')};
  return null;
 }
 function webCandidateFromParts(parts:{title:unknown;url:unknown;description?:unknown;extracted?:unknown;sourceName:string;sourceType:'web'|'news'|'blog'|'tavily';companyName?:string}):WebCandidate|null{
@@ -23,13 +28,13 @@ function webCandidateFromParts(parts:{title:unknown;url:unknown;description?:unk
  return {id:createHash('sha256').update(url).digest('hex').slice(0,24),title,url,description,sourceName:parts.sourceName,sourceType:parts.sourceType,companyName:parts.companyName,start:period?.start??null,end:period?.end??null,dateEvidence:period?`본문에서 확인한 접수기간: ${period.evidence}`:undefined,extractedContent:extracted||undefined};
 }
 type NaverKind='web'|'news'|'blog';
-export function parseNaverItems(data:unknown,kind:NaverKind,companyName?:string):WebCandidate[]{
+export function parseNaverItems(data:unknown,kind:NaverKind,_companyName?:string):WebCandidate[]{
  const items=data&&typeof data==='object'&&Array.isArray((data as {items?:unknown[]}).items)?(data as {items:unknown[]}).items:[];
  const sourceName=kind==='web'?'네이버 웹문서':kind==='news'?'네이버 뉴스':'네이버 블로그';
  return items.flatMap(item=>{
   if(!item||typeof item!=='object')return[];const v=item as Record<string,unknown>;
   const url=kind==='news'&&typeof v.originallink==='string'&&safePublicUrl(v.originallink)?v.originallink:v.link;
-  const c=webCandidateFromParts({title:v.title,url,description:v.description,sourceName,sourceType:kind,companyName});return c?[c]:[];
+  const c=webCandidateFromParts({title:v.title,url,description:v.description,sourceName,sourceType:kind});return c?[c]:[];
  });
 }
 export function parsePublicJobs(rows:unknown):Candidate[]{if(!Array.isArray(rows))throw new Error('공개 검색 결과 형식이 변경되었습니다.');return rows.flatMap(v=>{
@@ -45,19 +50,50 @@ export function parseIncruitDetail(source:string,url:string):Candidate{
  const title=clean(meta).replace(/\s*[-|｜].*인크루트.*$/i,'')||clean(text.match(/공고명\s*[:：]?\s*([^\n]{2,200})/)?.[1]??'');
  const company=clean($('[class*="company" i]').first().text())||clean(text.match(/기업명\s*[:：]?\s*(.{2,100}?)(?=\s*(?:접수\s*기간|모집\s*기간|채용\s*기간|공고명)|$)/i)?.[1]??'');
  const periodText=text.match(/(20\d{2}[.\-/년\s]+\d{1,2}[.\-/월\s]+\d{1,2}[^~]{0,40}[~∼～][^\n]{0,120})/)?.[1]??'';
- const start=periodText?dateFromFlexible(periodText,'start'):null,end=periodText?dateFromFlexible(periodText,'end'):null;
+ const extracted=extractRecruitmentPeriod(text);
+ const start=extracted?.start??(periodText?dateFromFlexible(periodText,'start'):null),end=extracted?.end??(periodText?dateFromFlexible(periodText,'end'):null);
  if(!title||!company)throw new Error('인크루트 공고 제목·기업명을 자동으로 확인하지 못했습니다. URL을 보존해 직접 등록할 수 있습니다.');
  return {id,provider:'incruit',companyName:company,title,role:'',employmentType:'',url:parsedUrl.href,start,end,sourceName:'인크루트 공고 상세',sourceKind:'public',evidence:`인크루트 원문 확인 · 모집기간: ${start?.date??'미공개'} ~ ${end?.date??'미공개'} · 정확한 시각은 원문 확인`,checkedAt:new Date().toISOString()};
 }
 export function parseGenericOfficialDetail(source:string,url:string,companyName:string):Candidate{
  const $=load(source);$('script,style,noscript').remove();const text=clean($.root().text(),30000),parsedUrl=new URL(url);
  const title=clean($('meta[property="og:title"]').attr('content')??$('h1').first().text()??$('title').text()??'').replace(/\s*[-|｜].*$/,'');
- const periodText=text.match(/(?:접수|모집|채용)\s*기간\s*[:：]?\s*([^\n]{0,220})/i)?.[1]??'';const period=periodText?parsePeriod(periodText):null;
+ const period=extractRecruitmentPeriod(text);
  if(!title)throw new Error('공식 공고 제목을 자동으로 확인하지 못했습니다.');
  const id=createHash('sha256').update(parsedUrl.href).digest('hex').slice(0,24);
  return {id,provider:'official-url',companyName,title,role:'',employmentType:'',url:parsedUrl.href,start:period?.start??null,end:period?.end??null,sourceName:`${companyName} 공식 채용`,sourceKind:'official',evidence:period?`공식 원문 접수기간: ${period.evidence}`:'공식 원문에서 모집기간을 자동 확인하지 못했습니다.',checkedAt:new Date().toISOString()};
 }
 async function genericOfficialDetail(url:string,companyName:string){const r=await publicFetch(url);return parseGenericOfficialDetail(r.body.toString('utf8'),url,companyName)}
+function companyForUrl(url:string,hint=''){
+ const host=new URL(url).hostname.toLowerCase();
+ if(host==='shinhan.recruiter.co.kr')return'신한은행';
+ if(host==='www.fss.or.kr'||host==='fine.fss.or.kr')return'금융감독원';
+ if(host==='recruit.kdb.co.kr')return'한국산업은행';
+ if(host==='im.recruiter.co.kr')return'iM뱅크';
+ return resolveInstitution(hint)?.name??resolveBank(hint)?.name??'';
+}
+function sourceNameForUrl(url:string){
+ const host=new URL(url).hostname.toLowerCase();
+ if(host.endsWith('fss.or.kr'))return'금융감독원 공식 채용';
+ if(host.endsWith('recruiter.co.kr'))return'기업 공식 채용';
+ if(host.includes('incruit.com')||host.includes('incruit.co.kr'))return'인크루트 공고';
+ if(host.includes('jobkorea.co.kr'))return'잡코리아 공고';
+ if(host.includes('kofia.or.kr'))return'금융투자협회 채용안내';
+ if(host.includes('catch.co.kr'))return'캐치 공고';
+ if(host.includes('linkareer.com'))return'링커리어 공고';
+ if(host.includes('jasoseol.com'))return'자소설닷컴 공고';
+ if(host.includes('work.go.kr'))return'워크넷 채용정보';
+ return'공개 채용 원문';
+}
+export async function enrichWebCandidate(url:string,hintCompany=''):Promise<Candidate>{
+ const parsed=new URL(url);if(!safePublicUrl(parsed.href))throw new Error('공개 HTTPS 공고 주소를 확인해주세요.');
+ if(parsed.hostname==='job.incruit.com')return {...await incruitDetail(parsed.href),provider:'web-source',discoveredBy:'네이버 검색',discoveryUrl:parsed.href};
+ const body=(await publicFetch(parsed.href)).body.toString('utf8'),company=companyForUrl(parsed.href,hintCompany);
+ if(!company)throw new Error('원문에서 기업명을 자동 확인하지 못했습니다. URL을 보존해 직접 등록하세요.');
+ const parsedCandidate=parseGenericOfficialDetail(body,parsed.href,company);
+ const official=['recruiter.co.kr','fss.or.kr','kbstar.careerlink.kr','kdb.co.kr'].some(host=>parsed.hostname===host||parsed.hostname.endsWith('.'+host));
+ return {...parsedCandidate,provider:'web-source',sourceName:sourceNameForUrl(parsed.href),sourceKind:official?'official':'public',discoveredBy:'네이버 검색',discoveryUrl:parsed.href};
+}
 function dateFromFlexible(raw:string,which:'start'|'end'):DatePoint|null{
  const m=[...raw.matchAll(/(20\d{2})[.\-/년\s]+(\d{1,2})[.\-/월\s]+(\d{1,2})/g)];const hit=m[which==='start'?0:1];if(!hit)return null;const p={date:`${hit[1]}-${hit[2].padStart(2,'0')}-${hit[3].padStart(2,'0')}`,time:null};return validPoint(p)?p:null;
 }
@@ -169,7 +205,7 @@ export async function searchJobs(query:string,page=1,config:SearchConfig={}):Pro
  if(bank&&page===1)requests.push(bankSearch(bank.id));if(isWoori&&page===1)requests.push(wooriArchive());
  const results=await Promise.allSettled(requests);let total=0,hasMore=false,partial=false,success=0;
  if(results[0].status==='fulfilled'){const r=results[0].value as PublicPage;candidates.push(...r.candidates);total=r.total;hasMore=r.hasMore;partial=r.partial;success++;if(partial)warnings.push('공개 검색 API가 응답하지 않아 첫 공개 페이지를 확인했습니다. 추가 조회가 실패할 수 있으며 전체 검색 결과가 아닙니다.');}
- else warnings.push(page===1?'공개 검색 소스 조회에 실패했습니다. 확인된 공식 공고만 표시합니다.':'추가 페이지 조회에 실패했습니다. 기존 결과를 유지했습니다. 잠시 후 다시 불러와 주세요.');
+ else warnings.push(page===1?'일부 공개 채용 소스가 응답하지 않아 확인 가능한 결과와 네이버 보완 결과를 함께 표시합니다.':'추가 페이지 조회에 실패했습니다. 기존 결과를 유지했습니다. 잠시 후 다시 불러와 주세요.');
  let index=1;if(bank&&page===1){const r=results[index++];if(r.status==='fulfilled'){const v=r.value as Awaited<ReturnType<typeof bankSearch>>;candidates.push(...v.candidates);success++;if(v.warning)warnings.push(v.warning)}else warnings.push('은행 공식 목록 조회에 실패했습니다.');}
  if(isWoori&&page===1){const r=results[index];if(r.status==='fulfilled'){candidates.push(r.value as Candidate);success++}else warnings.push('우리은행 공식 마감 공고 원문 조회에 실패했습니다.');}
  const related=candidates.filter(c=>!institution||institutionMatches(c.companyName,institution));
@@ -197,6 +233,6 @@ export async function searchJobs(query:string,page=1,config:SearchConfig={}):Pro
 export async function resolveSelection(s:Selection):Promise<Candidate>{
  if(!s||typeof s.query!=='string'||s.query.length>2000||typeof s.id!=='string')throw new Error('공고 선택 정보를 확인해주세요.');
  const page=s.page??1;if(!Number.isSafeInteger(page)||page<1||page>MAX_PAGES)throw new Error('공고 페이지를 확인해주세요.');
- const candidates=s.provider==='woori-archive'?[await wooriArchive()]:s.provider==='incruit'&&/^https:\/\/job\.incruit\.com\//i.test(s.query)?[await incruitDetail(s.query)]:s.provider==='official-url'?[await genericOfficialDetail(s.query,resolveInstitution(new URL(s.query).hostname==='recruit.kdb.co.kr'?'산업은행':new URL(s.query).hostname==='im.recruiter.co.kr'?'iM뱅크':new URL(s.query).hostname==='shinhan.recruiter.co.kr'?'신한은행':'금융감독원')?.name??'공식 기관')]:s.provider==='incruit'?(await publicSearchPage(s.query,page)).candidates:(await bankSearch(s.provider)).candidates;
+ const candidates=s.provider==='web-source'?[await enrichWebCandidate(s.query,s.companyName??'')]:s.provider==='woori-archive'?[await wooriArchive()]:s.provider==='incruit'&&/^https:\/\/job\.incruit\.com\//i.test(s.query)?[await incruitDetail(s.query)]:s.provider==='official-url'?[await genericOfficialDetail(s.query,resolveInstitution(new URL(s.query).hostname==='recruit.kdb.co.kr'?'산업은행':new URL(s.query).hostname==='im.recruiter.co.kr'?'iM뱅크':new URL(s.query).hostname==='shinhan.recruiter.co.kr'?'신한은행':'금융감독원')?.name??'공식 기관')]:s.provider==='incruit'?(await publicSearchPage(s.query,page)).candidates:(await bankSearch(s.provider)).candidates;
  const found=[...verifiedCandidates(candidates),...uncertainCandidates(candidates)].find(c=>c.id===s.id&&c.provider===s.provider);if(!found)throw new Error('공고 원문을 다시 확인하지 못했습니다. 다시 검색해주세요.');return found;
 }

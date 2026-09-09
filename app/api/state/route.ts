@@ -30,7 +30,7 @@ export async function POST(request:Request){
       const trusted=candidateApplication(await resolveSelection(input.selection));
       const draft:Application=input.application;
       validateApplication(draft);
-      official={...draft,origin:trusted.origin,provider:trusted.provider,sourceName:trusted.sourceName,officialPostingId:trusted.officialPostingId,officialRecruitmentSnapshot:trusted.officialRecruitmentSnapshot,evidence:trusted.evidence,officialCheckedAt:trusted.officialCheckedAt,createdAt:trusted.createdAt,recruitmentOrigin:JSON.stringify(draft.recruitment)===JSON.stringify(trusted.recruitment)?trusted.origin:'user_override'};
+      official={...draft,origin:trusted.origin,provider:trusted.provider,sourceName:trusted.sourceName,officialPostingId:trusted.officialPostingId,officialRecruitmentSnapshot:trusted.officialRecruitmentSnapshot,evidence:trusted.evidence,officialCheckedAt:trusted.officialCheckedAt,discoveredBy:trusted.discoveredBy,discoveryUrl:trusted.discoveryUrl,createdAt:trusted.createdAt,recruitmentOrigin:JSON.stringify(draft.recruitment)===JSON.stringify(trusted.recruitment)?trusted.origin:'user_override'};
     }
     if(input.action==='add-selected'){
       const bank=officialCompany(input.provider);if(!bank)throw new Error("지원하지 않는 공식 출처입니다.");
@@ -56,7 +56,7 @@ export async function POST(request:Request){
       if(!existing&&duplicate&&!input.allowDuplicate)throw new Error("DUPLICATE:비슷한 공고가 있습니다. 별도 차수·직무라면 중복 등록을 허용하세요.");
       if(existing){
         if(input.expectedUpdatedAt!==undefined&&input.expectedUpdatedAt!==existing.updatedAt)throw new Conflict();
-        a.origin=existing.origin;a.sourceName=existing.sourceName;a.provider=existing.provider;a.officialPostingId=existing.officialPostingId;a.evidence=existing.evidence;a.officialCheckedAt=existing.officialCheckedAt;a.officialRecruitmentSnapshot=existing.officialRecruitmentSnapshot;a.createdAt=existing.createdAt;
+        a.origin=existing.origin;a.sourceName=existing.sourceName;a.provider=existing.provider;a.officialPostingId=existing.officialPostingId;a.evidence=existing.evidence;a.officialCheckedAt=existing.officialCheckedAt;a.officialRecruitmentSnapshot=existing.officialRecruitmentSnapshot;a.discoveredBy=existing.discoveredBy;a.discoveryUrl=existing.discoveryUrl;a.createdAt=existing.createdAt;
         a.recruitmentOrigin=existing.origin!=="manual"?(JSON.stringify(a.recruitment)===JSON.stringify(existing.officialRecruitmentSnapshot)?existing.origin:"user_override"):"manual";
       }else if(!official){
         a.origin="manual";a.sourceName=undefined;a.provider=null;a.officialPostingId=null;a.evidence=null;a.officialCheckedAt=null;a.officialRecruitmentSnapshot=null;a.recruitmentOrigin="manual";a.createdAt=new Date().toISOString();
