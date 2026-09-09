@@ -58,7 +58,7 @@ PRD.md, DESIGN.md, PLAN.md, MIGRATION.md, README.md, package.json, tsconfig.json
 - `npm run lint`: 통과.
 - `npm run build`: 통과. Vinext의 동적 API 라우트 분류 경고만 출력됨.
 - `npm test` 직접 실행은 이 샌드박스에서 esbuild가 프로젝트 경로를 해석하지 못해 실패했으며, 동일 `tests/domain.test.ts`를 esbuild로 번들해 Node로 실행한 대체 검증은 25/25 통과.
-- 공개 Sites 배포 버전 10이 `a0407ffdb6c9d668567be203a6256519bf38c933` 소스와 일치하고 `https://jobtime-career-board.bmec3132.chatgpt.site`에서 HTTP 200, `<title>취준캘린더</title>`, 새 브랜드 포함을 확인함.
+- 공개 Sites 배포 버전 11이 `527b43f32a67e1c748dd9723687efbb903bd58f9` 소스와 일치하고 `https://jobtime-career-board.bmec3132.chatgpt.site`에서 HTTP 200, `<title>취준캘린더</title>`, 새 브랜드 포함을 확인함.
 - 이번 보완에는 운영 D1 마이그레이션을 추가하지 않았으며, 기존 스테이지 메모 필드는 삭제하지 않고 UI에서만 숨김.
 
 ## 2026-09-08 리디자인 검증
