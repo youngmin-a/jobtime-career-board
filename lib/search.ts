@@ -43,7 +43,7 @@ export function parseIncruitDetail(source:string,url:string):Candidate{
  const parsedUrl=new URL(url),id=parsedUrl.searchParams.get('job')??'';if(!/^\d{13}$/.test(id))throw new Error('인크루트 공고 번호를 확인하지 못했습니다.');
  const meta=$('meta[property="og:title"]').attr('content')??$('h1').first().text()??'';
  const title=clean(meta).replace(/\s*[-|｜].*인크루트.*$/i,'')||clean(text.match(/공고명\s*[:：]?\s*([^\n]{2,200})/)?.[1]??'');
- const company=clean($('[class*="company" i]').first().text())||clean(text.match(/기업명\s*[:：]?\s*([^\n]{2,100})/)?.[1]??'');
+ const company=clean($('[class*="company" i]').first().text())||clean(text.match(/기업명\s*[:：]?\s*(.{2,100}?)(?=\s*(?:접수\s*기간|모집\s*기간|채용\s*기간|공고명)|$)/i)?.[1]??'');
  const periodText=text.match(/(20\d{2}[.\-/년\s]+\d{1,2}[.\-/월\s]+\d{1,2}[^~]{0,40}[~∼～][^\n]{0,120})/)?.[1]??'';
  const start=periodText?dateFromFlexible(periodText,'start'):null,end=periodText?dateFromFlexible(periodText,'end'):null;
  if(!title||!company)throw new Error('인크루트 공고 제목·기업명을 자동으로 확인하지 못했습니다. URL을 보존해 직접 등록할 수 있습니다.');
