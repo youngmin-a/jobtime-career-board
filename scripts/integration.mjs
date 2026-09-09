@@ -8,10 +8,16 @@ const base=process.env.JOBTIME_TEST_URL||'http://localhost:3000';
 const headers={'Content-Type':'application/json',Origin:base};
 if(process.env.JOBTIME_TEST_TOKEN)headers['OAI-Sites-Authorization']='Bearer '+process.env.JOBTIME_TEST_TOKEN;
 let cookie='';
-async function request(path,init={}){const requestHeaders={...headers,...init.headers};if(cookie)requestHeaders.cookie=cookie;const r=await fetch(base+path,{...init,headers:requestHeaders});const setCookie=r.headers.get('set-cookie');if(setCookie)cookie=setCookie.split(';',1)[0];return r}
+let nameSession='';
+function saveCookie(setCookie){const pair=setCookie.split(';',1)[0],name=pair.split('=',1)[0];cookie=cookie.split('; ').filter(v=>!v.startsWith(name+'=')).concat(pair).filter(Boolean).join('; ')}
+async function request(path,init={}){const requestHeaders={...headers,...init.headers};if(cookie)requestHeaders.cookie=cookie;if(nameSession)requestHeaders['X-Workspace-Session']=nameSession;const r=await fetch(base+path,{...init,headers:requestHeaders});const setCookie=r.headers.get('set-cookie');if(setCookie)saveCookie(setCookie);return r}
+const marker='.test-output/persistence.json';
+let testName=process.env.JOBTIME_TEST_NAME||'integration-test';
+if(process.argv[2]!=='setup'){try{testName=JSON.parse(await readFile(marker,'utf8')).name||testName}catch{}}
+async function enterName(){const r=await request('/api/session',{method:'POST',body:JSON.stringify({action:'enter',name:testName})}),s=await r.json();assert.equal(r.status,200,JSON.stringify(s));nameSession=s.session.sessionTag}
+await enterName();
 async function get(){const r=await request('/api/state');assert.equal(r.status,200);return r.json()}
 async function post(body,status=200){const r=await request('/api/state',{method:'POST',body:JSON.stringify(body)}),s=await r.json();assert.equal(r.status,status,JSON.stringify(s));return s}
-const marker='.test-output/persistence.json';
 if(process.argv[2]==='setup'){
  const before=await get();await writeFile('.test-output/before-integration.json',JSON.stringify(before));
  const a=newApplication();a.companyName='JOBTIME 검증기업';a.postingTitle='통합 검증용 공고';a.notes='검증 후 이 공고만 삭제';
@@ -26,7 +32,7 @@ if(process.argv[2]==='setup'){
  await post({action:'save',revision:before.revision,application:a},409);
  const invalid=structuredClone(saved);invalid.recruitment.start=point({date:'2026-10-01',time:null});await post({action:'save',revision:s.revision,application:invalid},400);
  assert.deepEqual(await get(),s);
- await writeFile(marker,JSON.stringify({id:a.id,state:s,base}));
+ await writeFile(marker,JSON.stringify({id:a.id,state:s,base,name:testName}));
  console.log('PASS manual create/update, stage independence, stale revision 409, invalid dates 400; test record retained for restart/UI verification');
 }else if(process.argv[2]==='capture-ui'){
  const expected=JSON.parse(await readFile(marker,'utf8')),s=await get();

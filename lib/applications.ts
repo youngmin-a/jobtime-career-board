@@ -1,4 +1,5 @@
 import { BANKS, validPoint, pointMs, kstDate, type DatePoint, type Posting, type Store } from "./jobs";
+import type {SearchBasis} from './search-scope';
 
 export const managementLabels = {interested:"관심",preparing:"지원 준비",active:"지원 중",accepted:"최종합격",rejected:"불합격",withdrawn:"지원 철회"} as const;
 export const stageLabels = {not_started:"미진행",scheduled:"예정",in_progress:"진행 중",completed:"완료",passed:"합격",failed:"불합격",not_applicable:"해당 없음"} as const;
@@ -8,7 +9,7 @@ export type Point=DatePoint & {timezone:"Asia/Seoul"};
 export type Range={start:Point|null;end:Point|null;tentative:boolean};
 export type Stage={id:string;name:string;order:number;status:StageStatus;applicable:boolean;schedule:Range;resultExpectedAt:Point|null;resultConfirmedAt:Point|null;notes:string};
 export type PersonalEvent={id:string;title:string;schedule:Range;notes:string};
-export type Application={id:string;companyName:string;postingTitle:string;role:string;employmentType:string;postingUrl:string|null;origin:"official"|"public"|"manual";sourceName?:string;provider:string|null;officialPostingId:string|null;recruitment:Range;recruitmentOrigin:"official"|"public"|"manual"|"user_override";officialRecruitmentSnapshot:Range|null;evidence:string|null;officialCheckedAt:string|null;managementStatus:ManagementStatus;currentStageId:string|null;notes:string;stages:Stage[];personalEvents:PersonalEvent[];createdAt:string;updatedAt:string};
+export type Application={id:string;companyName:string;postingTitle:string;role:string;employmentType:string;postingUrl:string|null;origin:"official"|"public"|"manual";sourceName?:string;searchBasis?:SearchBasis;provider:string|null;officialPostingId:string|null;recruitment:Range;recruitmentOrigin:"official"|"public"|"manual"|"user_override";officialRecruitmentSnapshot:Range|null;evidence:string|null;officialCheckedAt:string|null;managementStatus:ManagementStatus;currentStageId:string|null;notes:string;stages:Stage[];personalEvents:PersonalEvent[];createdAt:string;updatedAt:string};
 export type State={version:2;revision:number;applications:Application[]};
 export const emptyRange=():Range=>({start:null,end:null,tentative:false});
 export function newStage(name:string,order:number):Stage{return{id:crypto.randomUUID(),name,order,status:"not_started",applicable:true,schedule:emptyRange(),resultExpectedAt:null,resultConfirmedAt:null,notes:""}}

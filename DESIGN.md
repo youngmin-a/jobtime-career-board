@@ -1,21 +1,25 @@
 # DESIGN — 취준캘린더 실제 구현
 
-기준: PRD.md · 2026-09-08 · KST
+기준: PRD.md · 2026-09-09 · KST
 
 ## 1. 구조
-- app/page.tsx: 대시보드·내 공고 탭, 공통 서버 상태, 공식 검색/선택 모달.
+- app/page.tsx: 캘린더 기본 탭, 내 공고·대시보드 보조 탭, 공통 서버 상태, 공식 검색/선택 모달.
+- app/name-entry.tsx: 이름·별명만 받는 진입 화면과 선택적 기존 브라우저 기록 가져오기.
 - app/editor.tsx: 공고·전형·개인 일정 편집, 날짜 입력, 삭제 확인.
 - app/calendar.tsx: 월간·주간·월별 목록, 기업·유형 필터, 날짜 목록.
 - lib/applications.ts: v2 타입, 검증, v1 변환, D-day, 캘린더 파생.
 - lib/jobs.ts: 기존 공식 타입·기간 분석·KST 유틸리티.
 - lib/providers.ts: 기존 KB/IBK/NH 공식 조회 어댑터 유지.
 - lib/repository.ts: 작업공간별 D1 백업·이전·revision 원자 갱신.
-- lib/workspace.ts: HttpOnly 브라우저 쿠키 또는 플랫폼 사용자 해시로 작업공간을 결정한다.
-- lib/store.ts: Cloudflare Workers env.DB 연결과 작업공간 응답 헤더.
+- lib/workspace.ts: 기존 브라우저/계정 작업공간을 읽기 위한 호환 컨텍스트를 유지한다.
+- lib/names.ts: 이름 정규화, D1 이름 공간·세션, 중복 없는 기존 기록 가져오기.
+- lib/progress.ts: 상세 초안과 분리된 현재 전형·진행 상태 빠른 패치.
+- lib/search-scope.ts / lib/posting-identity.ts: 2026 H2 범위 판정과 중복 식별.
+- lib/store.ts: Cloudflare Workers env.DB 연결과 이름 세션 소유권 검증.
 - db/schema.ts / drizzle: D1 스키마와 추가형 SQL 마이그레이션.
 
 ## 2. 화면과 인터랙션
-실제 경로 / 안에서 대시보드·취업 캘린더·내 공고를 탭으로 전환한다. 동일 native dialog 편집기를 공유한다. 별도 /applications 또는 /calendar 라우트는 만들지 않았다. 새 공고는 기업명·공고명만 먼저 보이고 상세 입력은 접힌다.
+이름 진입 후 실제 경로 `/`에서 캘린더·내 공고·대시보드를 탭으로 전환하며 캘린더가 항상 첫 탭이다. 동일 native dialog 편집기를 공유한다. 별도 `/applications` 또는 `/calendar` 라우트는 만들지 않았다. 새 공고는 기업명·공고명만 먼저 보이고 상세 입력은 접힌다.
 헤더는 작은 화면에서 두 줄이다. 상세 편집은 기본 정보 2열에서 모바일 1열로 전환한다. 전형은 접이식 상세이며 현재 상태와 이름을 요약한다.
 모달은 native dialog의 포커스 제한과 Escape 처리를 사용하고 닫을 때 기존 포커스로 복귀한다. 미저장 변경이 있으면 닫기 확인을 한다. 저장 요청 중 폼을 잠그고 실패하면 draft를 보존한다.
 브랜드는 밝은 회색 바탕과 흰색 카드, #2563EB 블루 강조, 얇은 테두리와 시스템 글꼴을 사용한다. 공고 상세는 PC 우측 Drawer, 모바일 전체 화면이다. 달력 이벤트는 유형 색상과 텍스트 라벨을 함께 제공한다.
@@ -40,10 +44,13 @@ currentStageId는 적용 가능한 같은 공고 전형 또는 null이다. 전�
 
 ## 5. API와 저장
 - GET /api/state: 현재 v2 상태, Cache-Control:no-store
-- POST /api/search: query(기업명 또는 공식 URL), 공식 후보와 해석 경고
+- GET/POST /api/session: 이름 공간 진입·전환·선택적 기존 브라우저 기록 가져오기
+- POST /api/search: query(기업명 또는 공식 URL), 2026 H2·마감 포함 후보와 해석 경고, page 추가 조회
 - POST /api/state: action과 revision을 받는 원자 변경
   - save: application 전체와 allowDuplicate
   - add-selected: provider, postingId, allowDuplicate; 서버 공식 재확인
+  - import-selected: 검색 후보 한 건을 서버 재확인 후 저장
+  - patch-progress: currentStageId, stageId/stageStatus, managementStatus 중 빠른 상태만 CAS 저장
   - delete: id
   - restore-backup: backupId, confirm=RESTORE; 운영 복구용
 - GET /api/export: v2 JSON 다운로드
@@ -53,7 +60,7 @@ currentStageId는 적용 가능한 같은 공고 전형 또는 null이다. 전�
 
 ## 6. D1와 이전
 운영 단일 저장소는 env.DB이다. app_state와 job_state_v2는 이전 원본, workspace_state는 현재 작업공간 상태, workspace_backups는 작업공간별 보관 스냅샷이다. payload의 JSON은 D1 안의 직렬화 형식이며 파일 저장소가 아니다.
-드리즐 0000·0001과 레거시 테이블은 그대로 두고 0002에서 workspace_state·workspace_backups를 추가한다. 계정 작업공간 최초 read에서만 v1을 변환하며 익명 작업공간은 레거시를 읽지 않는다. 백업과 workspace_state INSERT OR IGNORE를 D1 batch 트랜잭션으로 처리하여 재시도 가능하다.
+드리즐 0000·0001과 레거시 테이블은 그대로 두고 0002에서 workspace_state·workspace_backups, 0003에서 named_spaces·name_sessions·name_imports를 추가한다. 이름 작업공간은 자동으로 레거시를 읽지 않고 사용자가 요청한 가져오기만 name_imports 영수증과 백업을 남긴 뒤 D1 batch로 병합한다. 백업과 workspace_state INSERT OR IGNORE를 D1 batch 트랜잭션으로 처리하여 재시도 가능하다.
 일반 write는 revision 일치 조건의 백업 INSERT와 UPDATE를 batch로 실행한다. 다른 요청이 선점하면 변경 행 수 0 → 409다. 손상 데이터는 오류로 중단한다.
 복구도 기존 상태를 백업한 뒤 같은 revision 갱신을 사용한다. 상세 운영 절차는 MIGRATION.md를 따른다.
 
@@ -63,7 +70,7 @@ tests/domain.test.ts는 날짜·상태·이전·캘린더와 실제 SQLite 트�
 
 ## 8. 블루 칸반·범용 검색·공개 조회 확장
 - app/kanban.tsx와 lib/kanban.ts: 기본·사용자 지정 전형 컬럼, 네이티브 drag/drop, 키보드·모바일용 select. 상태 이동은 이전 전형 결과를 변경하지 않는다. 낙관적 표시 후 실패 시 원복한다.
-- app/search-dialog.tsx와 lib/search.ts: 인크루트 공개 페이지가 실제 사용하는 검색 JSON + 공개 HTML의 JSON 데이터 대체 경로, 60초 캐시, 20개 결과. 기존 세 은행의 공식 어댑터와 통합한다. 고용24는 인증키가 필요해 사용하지 않았다. 유료 서비스 도입 없음.
+- app/search-dialog.tsx와 lib/search.ts: 인크루트 공개 JSON/HTML 대체 경로, 60초 캐시, 50개씩 최대 10페이지, 2026 H2·마감 포함 필터. KB·IBK·NH 공식 어댑터와 우리은행 공식 마감 원문을 통합한다. 고용24는 인증키가 필요해 사용하지 않았다. 유료 서비스 도입 없음.
 - 결과는 Candidate 타입으로 통일하고 URL 중복을 제거한다. inviteStartDt/inviteCloseDt만 모집 날짜로 사용하고 regDate는 사용하지 않는다. 일반 검색의 정확한 시각은 null이다. 페이지 스크립트를 실행하지 않으며 호스트·HTTPS·응답 크기·타임아웃을 제한한다.
 - save-selected는 서버가 선택 provider/id/query로 실제 후보를 다시 확인한 뒤 사용자가 편집한 내용 한 건만 저장한다. Application.origin 및 recruitmentOrigin에 public을 추가하고 sourceName을 선택 필드로 확장했다. 기존 v2 데이터와 D1 스키마는 그대로다.
-- /api/access는 요청별 작업공간 종류와 canEdit를 반환한다. 로그인 없는 브라우저도 자신의 쿠키 작업공간을 편집할 수 있다. account 작업공간은 플랫폼 사용자 ID의 SHA-256 파생값이며 ID 자체를 D1 키로 노출하지 않는다. 공개 URL은 UI와 API 모두 workspace_id로 분리된다.
+- /api/access는 현재 이름 세션의 canEdit를 반환한다. 로그인 없이도 유효한 세션 태그가 있는 이름 공간만 편집할 수 있다. 기존 account/browser 작업공간 식별자는 마이그레이션 호환용으로 남기고 새 UI의 기본 저장 공간으로 사용하지 않는다. 공개 URL은 UI와 API 모두 이름 작업공간의 workspace_id로 분리된다.

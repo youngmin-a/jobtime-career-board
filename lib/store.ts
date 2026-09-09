@@ -1,10 +1,14 @@
 import {env} from "cloudflare:workers";
 import {repository} from "./repository";
-import {workspaceContext,type WorkspaceContext} from "./workspace";
+import {type WorkspaceContext} from "./workspace";
+import {getNameSession,requireSessionTag,SessionError} from './names';
 
 export async function storeForRequest(request:Request){
-  const context=await workspaceContext(request);
   const db=(env as unknown as {DB:D1Database}).DB;
+  const session=await getNameSession(db,request);
+  if(!session)throw new SessionError();
+  if(request.method!=='GET'||request.headers.has('X-Workspace-Session'))requireSessionTag(request,session);
+  const context:WorkspaceContext={id:session.workspaceId,kind:'named',legacyOwner:false};
   return {context,repository:repository(db,context.id,{legacyOwner:context.legacyOwner})};
 }
 

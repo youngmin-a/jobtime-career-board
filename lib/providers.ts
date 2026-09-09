@@ -2,7 +2,7 @@ import { load } from "cheerio";
 import { createHash } from "node:crypto";
 import { BANKS, parsePeriod, validPoint, type Company, type DatePoint, type Posting } from "./jobs";
 
-const allowedHosts = new Set(["kbstar.careerlink.kr","api.inhr.co.kr","ibk.incruit.com","ibk3.incruit.com","ibk4.incruit.com","nhbank.incruit.com","jlab.incruit.com"]);
+const allowedHosts = new Set(["kbstar.careerlink.kr","api.inhr.co.kr","ibk.incruit.com","ibk3.incruit.com","ibk4.incruit.com","nhbank.incruit.com","jlab.incruit.com","jrs.jobkorea.co.kr"]);
 export async function publicFetch(url: string, init: RequestInit = {}) {
   // 요청 대상은 검증한 공식 출처에 한정한다. 사용자 입력 URL을 서버가 임의로 방문하지 않는다.
   let next = new URL(url);
@@ -35,7 +35,8 @@ function record(company:Company,title:string,url:string,start:DatePoint|null,end
 export function parseKb(data: unknown, company:Company) {
   const value=data as {code?:string; data?:{rcrtList?:Record<string,unknown>[]}};
   if(value.code!=="0000" || !Array.isArray(value.data?.rcrtList))throw new Error("국민은행 공고 목록 형식이 변경되었습니다. 공식 사이트를 확인해주세요.");
-  return value.data.rcrtList.filter(v=>v.rcrtOpblScopGbcd==="01" && v.statGbcd==="00").map(v=> {
+  // 공개 범위만 제한하고 상태는 열림/마감을 모두 보존한다. 검색 단계에서 2026년 하반기만 분류한다.
+  return value.data.rcrtList.filter(v=>v.rcrtOpblScopGbcd==="01").map(v=> {
     function date(raw:unknown):DatePoint|null {
       if(typeof raw!=="string")return null;
       const m=raw.match(/^(20\d{2}-\d{2}-\d{2}) (\d{2}:\d{2}):(\d{2})$/);

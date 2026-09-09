@@ -5,7 +5,7 @@ const COOKIE_MAX_AGE = 60 * 60 * 24 * 365;
 
 export type WorkspaceContext = {
   id: string;
-  kind: "browser" | "account";
+  kind: "browser" | "account" | "named";
   legacyOwner: boolean;
   setCookie?: string;
 };
