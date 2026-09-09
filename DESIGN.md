@@ -28,7 +28,7 @@
 정확한 TypeScript 정의는 lib/applications.ts가 기준이다.
 - State: version=2, revision, applications[]
 - Application: UUID id, companyName, postingTitle, role/ employmentType/notes(빈 문자열 허용), postingUrl|null, origin, provider|null, officialPostingId|null, recruitment, recruitmentOrigin, officialRecruitmentSnapshot|null, evidence|null, officialCheckedAt|null, managementStatus, currentStageId|null, stages[], personalEvents[], createdAt, updatedAt
-- Stage: id, name, order, status, applicable, schedule, resultExpectedAt|null, resultConfirmedAt|null, notes
+- Stage: id, name, order, status, applicable, schedule, resultExpectedAt|null, resultConfirmedAt|null, notes. `notes`는 기존 D1 호환을 위해 보존하며 현재 편집 UI에서는 렌더링·수정하지 않는다.
 - PersonalEvent: id, title, schedule, notes. 부모 공고 안에 보관하므로 별도 applicationId 중복 저장 없음.
 - Point: date, time|null, timezone=Asia/Seoul, optional second
 - Range: start|null, end|null, tentative
