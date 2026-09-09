@@ -143,6 +143,13 @@ async function tavilySearch(query:string,key:string,companyName?:string){
  const candidates=base.map(c=>{const content=extracted.get(normalizedPostingUrl(c.url));if(!content)return c;const period=extractRecruitmentPeriod([c.title,c.description,content].join(' '));return {...c,extractedContent:cleanRich(content,1800),start:period?.start??c.start??null,end:period?.end??c.end??null,dateEvidence:period?`본문에서 확인한 접수기간: ${period.evidence}`:c.dateEvidence}});
  return {candidates,warnings:warning?[warning]:[]};
 }
+export function fallbackQueryForInstitution(query:string,institution?:Institution){
+ if(!institution)return query;
+ const normalized=query.replace(/\s+/g,' ').trim();
+ if(/하반기|신입|신입행원|채용|공채/i.test(normalized))return normalized;
+ const focus=institution.id==='shinhan'?'신입행원':institution.id==='fss'?'5급 종합직원':'채용';
+ return `${normalized} 2026 하반기 ${focus}`.replace(/\s+/g,' ').trim();
+}
 export async function searchJobs(query:string,page=1,config:SearchConfig={}):Promise<SearchResult>{
  if(!Number.isSafeInteger(page)||page<1||page>MAX_PAGES)throw new Error('조회 페이지를 확인해주세요.');
  const warnings:string[]=[],candidates:Candidate[]=[];let bank=resolveBank(query),institution=resolveInstitution(query),targetUrl:string|undefined;
@@ -171,13 +178,16 @@ export async function searchJobs(query:string,page=1,config:SearchConfig={}):Pro
  const unique=verifiedCandidates(scoped).filter((c,i,a)=>a.findIndex(x=>normalizedPostingUrl(x.url)===normalizedPostingUrl(c.url))===i).filter(c=>!targetUrl||normalizedPostingUrl(c.url)===normalizedPostingUrl(targetUrl));
  const uncertain=uncertainCandidates(scoped).filter((c,i,a)=>a.findIndex(x=>normalizedPostingUrl(x.url)===normalizedPostingUrl(c.url))===i).filter(c=>!targetUrl||normalizedPostingUrl(c.url)===normalizedPostingUrl(targetUrl));
  let webCandidates:WebCandidate[]|undefined;const webWarnings:string[]=[];
- const needsWebFallback=page===1&&(success===0||unique.length<3);
+ // 기관 검색은 공개 채용 결과가 많아도 특정 회차 공고가 누락될 수 있다.
+ // 따라서 첫 페이지에서는 기관별 보완 검색을 항상 실행한다.
+ const needsWebFallback=page===1&&(success===0||unique.length<3||!!institution);
+ const fallbackQuery=fallbackQueryForInstitution(queryText,institution);
  if(needsWebFallback&&config.naverClientId&&!config.naverClientSecret)webWarnings.push('네이버 검색은 Client ID와 Client Secret이 모두 필요합니다.');
  if(needsWebFallback&&config.naverClientSecret&&!config.naverClientId)webWarnings.push('네이버 검색은 Client ID와 Client Secret이 모두 필요합니다.');
- if(needsWebFallback&&config.naverClientId&&config.naverClientSecret){try{const r=await naverSearch(queryText,config.naverClientId,config.naverClientSecret,page,entity?.name);webCandidates=[...(webCandidates??[]),...r.candidates];webWarnings.push(...r.warnings)}catch{webWarnings.push('네이버 검색 조회에 실패했습니다. 공식·공개 결과는 유지됩니다.')}}
- if(needsWebFallback&&config.tavilyApiKey){try{const r=await tavilySearch(queryText,config.tavilyApiKey,entity?.name);webCandidates=[...(webCandidates??[]),...r.candidates];webWarnings.push(...r.warnings)}catch{webWarnings.push('Tavily 검색 조회에 실패했습니다. 공식·공개 결과는 유지됩니다.')}}
- if(needsWebFallback&&config.braveApiKey){try{webCandidates=[...(webCandidates??[]),...(await externalWebSearch(queryText,config.braveApiKey))]}catch{webWarnings.push('Brave 웹 검색 조회에 실패했습니다. 공식·공개 결과는 유지됩니다.')}}
- if(needsWebFallback&&config.alioApiKey&&config.alioApiUrl){try{webCandidates=[...(webCandidates??[]),...(await alioSearch(queryText,config.alioApiKey,config.alioApiUrl))]}catch{webWarnings.push('ALIO 조회에 실패했습니다. 공식·공개 결과는 유지됩니다.')}}
+ if(needsWebFallback&&config.naverClientId&&config.naverClientSecret){try{const r=await naverSearch(fallbackQuery,config.naverClientId,config.naverClientSecret,page,entity?.name);webCandidates=[...(webCandidates??[]),...r.candidates];webWarnings.push(...r.warnings)}catch{webWarnings.push('네이버 검색 조회에 실패했습니다. 공식·공개 결과는 유지됩니다.')}}
+ if(needsWebFallback&&config.tavilyApiKey){try{const r=await tavilySearch(fallbackQuery,config.tavilyApiKey,entity?.name);webCandidates=[...(webCandidates??[]),...r.candidates];webWarnings.push(...r.warnings)}catch{webWarnings.push('Tavily 검색 조회에 실패했습니다. 공식·공개 결과는 유지됩니다.')}}
+ if(needsWebFallback&&config.braveApiKey){try{webCandidates=[...(webCandidates??[]),...(await externalWebSearch(fallbackQuery,config.braveApiKey))]}catch{webWarnings.push('Brave 웹 검색 조회에 실패했습니다. 공식·공개 결과는 유지됩니다.')}}
+ if(needsWebFallback&&config.alioApiKey&&config.alioApiUrl){try{webCandidates=[...(webCandidates??[]),...(await alioSearch(fallbackQuery,config.alioApiKey,config.alioApiUrl))]}catch{webWarnings.push('ALIO 조회에 실패했습니다. 공식·공개 결과는 유지됩니다.')}}
  if(page===1&&institution)webCandidates=[...(webCandidates??[]),...officialPathCandidates(institution).filter(c=>!(webCandidates??[]).some(x=>normalizedPostingUrl(x.url)===normalizedPostingUrl(c.url)))];
  warnings.push(...webWarnings);
  if(page===MAX_PAGES&&hasMore)warnings.push('공개 검색 후보 500개까지 확인했습니다. 검색어를 구체화해 주세요.');
