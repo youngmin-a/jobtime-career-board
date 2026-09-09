@@ -4,10 +4,10 @@ import {calendarEvents,emptyRange,eventDate,eventLabels,managementLabels,newStag
 import {patchProgress,mergeProgressDraft,type ProgressPatch} from '@/lib/progress';
 import {formatPoint,kstDate} from "@/lib/jobs";
 
-export function Modal({title,children,onClose,drawer=false}:{drawer?:boolean;title:string;children:React.ReactNode;onClose:()=>void}){
+export function Modal({title,children,onClose,drawer=false,className=''}:{drawer?:boolean;className?:string;title:string;children:React.ReactNode;onClose:()=>void}){
  const ref=useRef<HTMLDialogElement>(null);
  useEffect(()=>{const previous=document.activeElement as HTMLElement|null;ref.current?.showModal();return()=>{previous?.focus()}},[]);
- return <dialog ref={ref} className={"editor-dialog "+(drawer?"drawer":"")} onCancel={e=>{e.preventDefault();onClose()}} aria-label={title}><div className="dialog-head"><h2>{title}</h2><button type="button" onClick={onClose} aria-label="닫기">×</button></div>{children}</dialog>
+ return <dialog ref={ref} className={"editor-dialog "+(drawer?"drawer ":'')+className} onCancel={e=>{e.preventDefault();onClose()}} aria-label={title}><div className="dialog-head"><h2>{title}</h2><button type="button" onClick={onClose} aria-label="닫기">×</button></div>{children}</dialog>
 }
 export function PointField({label,value,onChange}:{label:string;value:Point|null;onChange:(v:Point|null)=>void}){
  return <div className="point-field"><label>{label}<input type="date" value={value?.date??""} onChange={e=>onChange(e.target.value?{...(value??{time:null,timezone:"Asia/Seoul"}),date:e.target.value,timezone:"Asia/Seoul"}:null)}/></label><label>시각 (선택)<input type="time" disabled={!value} value={value?.time??""} onChange={e=>value&&onChange({...value,time:e.target.value||null})}/></label></div>
