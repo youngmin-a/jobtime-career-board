@@ -81,4 +81,4 @@ https://jobtime-career-board.bmec3132.chatgpt.site
 
 - 최종 공개 배포: Sites 버전 11, 커밋 `527b43f32a67e1c748dd9723687efbb903bd58f9`, 배포 성공. 공개 URL과 D1 바인딩은 기존 값을 유지한다.
 
-- 네이버·Tavily 연동 코드는 서버 Secret이 있을 때만 활성화된다. 현재 키를 배포하지 않아 공개 서비스는 기존 공식·공개 검색과 수동 URL 등록으로 동작한다. GitHub Actions에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `TAVILY_API_KEY`(선택) Secret을 추가하면 다음 `main` 배포부터 Worker에 주입된다.
+- 네이버·Tavily 연동 코드는 서버 Secret이 있을 때만 활성화된다. 네이버 키는 NAVER API HUB의 Client ID/Client Secret이며 API HUB 전용 엔드포인트와 인증 헤더로 호출한다. 키를 배포하지 않으면 공개 서비스는 기존 공식·공개 검색과 수동 URL 등록으로 동작한다. GitHub Actions에 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `TAVILY_API_KEY`(선택) Secret을 추가하면 다음 `main` 배포부터 Worker에 주입된다.

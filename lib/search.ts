@@ -113,10 +113,10 @@ async function alioSearch(query:string,key:string,url:string):Promise<WebCandida
  return rows.flatMap(v=>{if(!v||typeof v!=='object')return[];const x=v as Record<string,unknown>,title=clean(x.title??x.recruitmentName??x.recruitNm,200),link=clean(x.url??x.detailUrl??x.recruitUrl,2000),description=clean(x.description??x.contents??'',500);if(!title||!safePublicUrl(link))return[];return[{id:createHash('sha256').update(link).digest('hex').slice(0,24),title,url:link,description,sourceName:'ALIO 공공기관 채용정보'}]});
 }
 async function naverEndpoint(kind:NaverKind,query:string,clientId:string,clientSecret:string,page:number,companyName?:string){
- const endpoint=new URL(`https://openapi.naver.com/v1/search/${kind==='web'?'webkr':kind}.json`);
- endpoint.searchParams.set('query',query);endpoint.searchParams.set('display','20');endpoint.searchParams.set('start',String(1+(page-1)*20));if(kind!=='web')endpoint.searchParams.set('sort','sim');
- const response=await fetch(endpoint,{headers:{'X-Naver-Client-Id':clientId,'X-Naver-Client-Secret':clientSecret,Accept:'application/json'},signal:AbortSignal.timeout(12000)});
- if(!response.ok)throw new Error(`네이버 ${kind} 검색 오류 (${response.status})`);
+ const endpoint=new URL(`https://naverapihub.apigw.ntruss.com/search/v1/${kind==='web'?'webkr':kind}`);
+ endpoint.searchParams.set('query',query);endpoint.searchParams.set('display','20');endpoint.searchParams.set('start',String(1+(page-1)*20));endpoint.searchParams.set('format','json');if(kind!=='web')endpoint.searchParams.set('sort','sim');
+ const response=await fetch(endpoint,{headers:{'X-NCP-APIGW-API-KEY-ID':clientId,'X-NCP-APIGW-API-KEY':clientSecret,Accept:'application/json'},signal:AbortSignal.timeout(12000)});
+ if(!response.ok)throw new Error(`네이버 API HUB ${kind} 검색 오류 (${response.status})`);
  return parseNaverItems(await response.json(),kind,companyName);
 }
 async function naverSearch(query:string,clientId:string,clientSecret:string,page:number,companyName?:string){

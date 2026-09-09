@@ -15,6 +15,6 @@ PRD.md는 제품 정의, DESIGN.md는 실제 설계, MIGRATION.md는 백업·복
 - CLOUDFLARE_D1_DATABASE_ID: 새 Cloudflare D1의 ID
 - BRAVE_SEARCH_API_KEY (선택): 서버 전용 Brave 웹 검색 키. 없으면 외부 검색 열기와 공식·공개 검색을 사용합니다.
 - ALIO_API_KEY / ALIO_API_URL (선택): ALIO가 제공한 공공기관 채용 API의 서버 전용 키와 공식 alio.go.kr 엔드포인트입니다. 임의 가입·결제 없이 설정된 경우에만 호출합니다.
-- NAVER_CLIENT_ID / NAVER_CLIENT_SECRET (선택): 네이버 검색 API의 서버 전용 인증값입니다. 웹문서·뉴스·블로그 검색을 보완 경로로 사용합니다.
+- NAVER_CLIENT_ID / NAVER_CLIENT_SECRET (선택): NAVER API HUB에서 발급한 서버 전용 인증값입니다. 웹문서·뉴스·블로그 검색을 보완 경로로 사용합니다.
 - TAVILY_API_KEY (선택): Tavily 검색·본문 추출용 서버 전용 키입니다. 상위 결과 일부만 본문을 추출하며, 키가 없으면 호출하지 않습니다.
 배포 대상 D1은 `DB` 바인딩 하나를 운영 영속 저장소로 사용하며 `migrations/`의 추가형 마이그레이션을 순서대로 적용합니다. `app_state`·`job_state_v2`·`workspace_state`·`workspace_backups`는 보존하고, 이름 진입용 `named_spaces`·`name_sessions`·`name_imports`만 0003에서 추가합니다. 개인 데이터는 공개 URL의 방문자끼리 공유하지 않으며, 기존 브라우저 기록은 명시적 가져오기 전에는 복사하지 않습니다.

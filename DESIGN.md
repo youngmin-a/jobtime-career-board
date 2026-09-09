@@ -70,7 +70,7 @@ tests/domain.test.ts는 날짜·상태·이전·캘린더와 실제 SQLite 트�
 
 ## 8. 블루 칸반·범용 검색·공개 조회 확장
 - app/kanban.tsx와 lib/kanban.ts: 기본·사용자 지정 전형 컬럼, 네이티브 drag/drop, 키보드·모바일용 select. 상태 이동은 이전 전형 결과를 변경하지 않는다. 낙관적 표시 후 실패 시 원복한다.
-- app/search-dialog.tsx와 lib/search.ts: 인크루트 공개 JSON/HTML 대체 경로, 60초 캐시, 50개씩 최대 10페이지, 2026 H2·마감 포함 필터. KB·IBK·NH 공식 어댑터와 우리은행 공식 마감 원문을 통합한다. 네이버 웹문서·뉴스·블로그는 Client ID/Secret이 있을 때만 보완 검색하고, Tavily는 검색 상위 URL 일부를 본문 추출해 접수기간을 미리 채운다. 키가 없으면 기존 공식·공개 검색과 URL 직접 등록을 유지한다. 고용24는 인증키가 필요해 사용하지 않았다. 유료 서비스 도입 없음.
+- app/search-dialog.tsx와 lib/search.ts: 인크루트 공개 JSON/HTML 대체 경로, 60초 캐시, 50개씩 최대 10페이지, 2026 H2·마감 포함 필터. KB·IBK·NH 공식 어댑터와 우리은행 공식 마감 원문을 통합한다. 네이버 웹문서·뉴스·블로그는 NAVER API HUB Client ID/Secret이 있을 때만 보완 검색하고, API HUB 전용 엔드포인트·인증 헤더를 사용한다. Tavily는 검색 상위 URL 일부를 본문 추출해 접수기간을 미리 채운다. 키가 없으면 기존 공식·공개 검색과 URL 직접 등록을 유지한다. 고용24는 인증키가 필요해 사용하지 않았다. 유료 서비스 도입 없음.
 - 결과는 Candidate 타입으로 통일하고 원천 ID·대표 URL을 우선해 중복을 제거한다. inviteStartDt/inviteCloseDt만 모집 날짜로 사용하고 regDate는 사용하지 않는다. 실제 접수 시작일을 2026년 하반기 판정의 우선 기준으로 삼고 시작일 미확인 후보는 별도 목록으로 보낸다. 일반 검색의 정확한 시각은 null이다. 인크루트·KDB·iM뱅크·금감원 상세 URL은 안전한 원문 해석을 시도하고, 해석 실패 시 URL 보존 수동 등록으로 연결한다. Brave·ALIO는 서버 환경변수가 있을 때만 호출하며 없으면 외부 검색 열기와 공식 경로를 제공한다. 페이지 스크립트를 실행하지 않으며 호스트·HTTPS·응답 크기·타임아웃을 제한한다.
 - save-selected는 서버가 선택 provider/id/query로 실제 후보를 다시 확인한 뒤 사용자가 편집한 내용 한 건만 저장한다. Application.origin 및 recruitmentOrigin에 public을 추가하고 sourceName을 선택 필드로 확장했다. 기존 v2 데이터와 D1 스키마는 그대로다.
 - /api/access는 현재 이름 세션의 canEdit를 반환한다. 로그인 없이도 유효한 세션 태그가 있는 이름 공간만 편집할 수 있다. 기존 account/browser 작업공간 식별자는 마이그레이션 호환용으로 남기고 새 UI의 기본 저장 공간으로 사용하지 않는다. 공개 URL은 UI와 API 모두 이름 작업공간의 workspace_id로 분리된다.
