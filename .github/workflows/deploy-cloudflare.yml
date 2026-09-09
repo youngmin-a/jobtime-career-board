@@ -31,5 +31,28 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: node scripts/prepare-wrangler.mjs
+      - name: Configure optional search provider secrets
+        env:
+          NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+          NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
+          ALIO_API_KEY: ${{ secrets.ALIO_API_KEY }}
+          ALIO_API_URL: ${{ secrets.ALIO_API_URL }}
+        run: |
+          set -euo pipefail
+          put_secret() {
+            local name="$1"
+            local value="${2:-}"
+            if [ -n "$value" ]; then
+              printf '%s' "$value" | npx wrangler secret put "$name" --config dist/server/wrangler.json >/dev/null
+            fi
+          }
+          put_secret NAVER_CLIENT_ID "$NAVER_CLIENT_ID"
+          put_secret NAVER_CLIENT_SECRET "$NAVER_CLIENT_SECRET"
+          put_secret TAVILY_API_KEY "$TAVILY_API_KEY"
+          put_secret BRAVE_SEARCH_API_KEY "$BRAVE_SEARCH_API_KEY"
+          put_secret ALIO_API_KEY "$ALIO_API_KEY"
+          put_secret ALIO_API_URL "$ALIO_API_URL"
       - run: npx wrangler d1 migrations apply jobtime-d1 --remote --config dist/server/wrangler.json
       - run: npx wrangler deploy --config dist/server/wrangler.json

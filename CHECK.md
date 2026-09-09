@@ -60,6 +60,8 @@ PRD.md, DESIGN.md, PLAN.md, MIGRATION.md, README.md, package.json, tsconfig.json
 - `npm test` 직접 실행은 이 샌드박스에서 esbuild가 프로젝트 경로를 해석하지 못해 실패했으며, 동일 `tests/domain.test.ts`를 esbuild로 번들해 Node로 실행한 대체 검증은 25/25 통과.
 - 공개 Sites 배포 버전 11이 `527b43f32a67e1c748dd9723687efbb903bd58f9` 소스와 일치하고 `https://jobtime-career-board.bmec3132.chatgpt.site`에서 HTTP 200, `<title>취준캘린더</title>`, 새 브랜드 포함을 확인함.
 - 이번 보완에는 운영 D1 마이그레이션을 추가하지 않았으며, 기존 스테이지 메모 필드는 삭제하지 않고 UI에서만 숨김.
+- 네이버 응답 HTML 제거·접수기간 추출 단위 테스트를 추가했다. 외부 네이버/Tavily 호출은 비밀키 미설정 상태라 실행하지 않았다.
+- GitHub Actions는 `NAVER_CLIENT_ID`, `NAVER_CLIENT_SECRET`, `TAVILY_API_KEY`와 기존 선택 키를 값이 있을 때만 Worker Secret으로 주입한다.
 
 ## 2026-09-08 리디자인 검증
 도메인 테스트 15개, typecheck, lint, production build 통과. 실제 칸반 드래그 후 저장 및 기존 전형 완료 상태 보존 확인. 모집 기간 반복 제거와 실제 전형 일정 표시 확인. 현대자동차·청년인턴·우리은행 실제 검색, 선택한 한 건 편집 저장 및 삭제 확인. 기존 로컬 공고 보존, 검증용 공고 정리 완료. 공개 전환 결과는 DEPLOYMENT.md에 기록.
