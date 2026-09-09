@@ -32,6 +32,20 @@ https://jobtime-career-board.bmec3132.chatgpt.site
 
 토큰 재설정은 사용하지 않았다.
 
+## 취준캘린더 2026 하반기 검색·이름 공간 보완
+
+2026-09-09 KST. 중단된 구현을 재개해 이름 기반 개인 공간, 빠른 전형 상태 변경, 2026년 하반기·마감 포함 검색을 기존 공개 사이트와 Worker에 반영했다.
+
+- GitHub 커밋: fc9802b6e010d29bfda8f753990a93598f92caa6
+- GitHub Actions 실행: 34301827286 (typecheck·lint·25개 test·build·D1 0003·Worker deploy 모두 성공)
+- Sites 버전: 7, 배포 성공
+- 공개 주소: https://jobtime-career-board.bmec3132.chatgpt.site
+- Worker 주소: https://jobtime-career-board.bmec3132.workers.dev
+- 접근: Sites는 기존 public 정책을 유지한다. 첫 화면에서 이름 또는 별명을 입력하며, 같은 이름은 같은 D1 `named_spaces`로 연결된다. 세션 태그 없는 요청은 상태 조회·변경을 거부한다.
+- D1: 기존 `app_state`, `job_state_v2`, `workspace_state`, `workspace_backups`를 보존하고 0003에서 `named_spaces`, `name_sessions`, `name_imports`만 추가했다. 기존 브라우저 기록은 사용자가 선택한 경우에만 백업 후 한 번 가져온다.
+- 기능: 캘린더 첫 화면, 공고별 현재 전형·진행 상태 빠른 저장, 서류 제출 완료와 합격 분리, 2026 H2·마감 포함 검색 및 추가 페이지, 우리은행 공식 마감 원문, 이름 전환·선택적 레거시 가져오기.
+- 로컬 검증: `npm test` 25/25, `npm run typecheck`, `npm run lint`, `npm run build` 통과. 운영 D1 장애 주입·실기기 접근성·대량 500건 성능 검증은 실행하지 않았다.
+
 ## JOBTIME v3 리디자인·공개 전환
 
 2026-09-08 KST. 리디자인과 범용 채용공고 검색을 기존 주소에 반영했다.
