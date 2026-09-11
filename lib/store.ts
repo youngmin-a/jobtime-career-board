@@ -9,7 +9,7 @@ export async function storeForRequest(request:Request){
   if(!session)throw new SessionError();
   if(request.method!=='GET'||request.headers.has('X-Workspace-Session'))requireSessionTag(request,session);
   const context:WorkspaceContext={id:session.workspaceId,kind:'named',legacyOwner:false};
-  return {context,repository:repository(db,context.id,{legacyOwner:context.legacyOwner})};
+  return {context,repository:repository(db,context.id,{legacyOwner:context.legacyOwner}),db};
 }
 
 export function addWorkspaceHeaders(response:Response,context:WorkspaceContext){

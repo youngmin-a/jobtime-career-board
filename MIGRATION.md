@@ -44,3 +44,5 @@ SQLite 테스트는 마이그레이션·원본 보존·손상 거부·실패 시
 `name_sessions`에는 토큰 원문이 아닌 SHA-256 해시만 저장한다. 세션 쿠키는 HttpOnly·SameSite=Lax이며 HTTPS 배포에서는 Secure다. `/api/state`, `/api/export`, `/api/access`와 상태 변경 요청은 세션 태그와 D1 workspace_id를 함께 확인한다. 이름을 아는 사용자는 같은 공간에 들어올 수 있으므로 진입 문구에서 구분되는 별명 사용을 안내한다.
 
 기존 `jobtime_workspace` 쿠키가 있는 브라우저에 기록이 있으면 진입 후 `기존 기록 가져오기`가 보인다. 가져오기는 `name_imports`의 source 기본키로 한 번만 처리하며, source·target의 변경 전 payload를 `workspace_backups`에 남기고 D1 batch CAS로 병합한다. 충돌·실패 시 원본과 대상 모두 유지한다. 다른 기기에서 같은 이름으로 재접속하는 경우에는 이름 작업공간의 현재 D1 상태를 읽으며, 브라우저별 기존 레거시 쿠키는 자동 병합하지 않는다.
+
+`0004_analysis_usage.sql`은 공고 분석 요청의 작업공간별 10분 창 카운터만 추가한다. `workspace_state`, 백업, 공고 payload를 변경하지 않는다. 코드 롤백 뒤에도 이 테이블은 사용자 데이터에 영향을 주지 않으므로 그대로 둘 수 있고, 제거가 꼭 필요하면 분석 API를 이전 버전으로 되돌린 뒤 `analysis_usage`만 별도로 삭제한다.

@@ -39,6 +39,8 @@ jobs:
           BRAVE_SEARCH_API_KEY: ${{ secrets.BRAVE_SEARCH_API_KEY }}
           ALIO_API_KEY: ${{ secrets.ALIO_API_KEY }}
           ALIO_API_URL: ${{ secrets.ALIO_API_URL }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
         run: |
           set -euo pipefail
           put_secret() {
@@ -54,5 +56,7 @@ jobs:
           put_secret BRAVE_SEARCH_API_KEY "$BRAVE_SEARCH_API_KEY"
           put_secret ALIO_API_KEY "$ALIO_API_KEY"
           put_secret ALIO_API_URL "$ALIO_API_URL"
+          put_secret OPENAI_API_KEY "$OPENAI_API_KEY"
+          put_secret OPENAI_MODEL "$OPENAI_MODEL"
       - run: npx wrangler d1 migrations apply jobtime-d1 --remote --config dist/server/wrangler.json
       - run: npx wrangler deploy --config dist/server/wrangler.json

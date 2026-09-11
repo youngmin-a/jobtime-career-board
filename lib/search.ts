@@ -162,7 +162,7 @@ async function naverSearch(query:string,clientId:string,clientSecret:string,page
  return {candidates:unique,warnings};
 }
 type TavilySearchRow={title?:unknown;url?:unknown;content?:unknown;raw_content?:unknown};
-async function tavilyExtract(urls:string[],query:string,key:string){
+export async function tavilyExtract(urls:string[],query:string,key:string){
  if(!urls.length)return new Map<string,string>();
  const response=await fetch('https://api.tavily.com/extract',{method:'POST',headers:{Authorization:`Bearer ${key}`,'Content-Type':'application/json'},body:JSON.stringify({urls,query,chunks_per_source:3,extract_depth:'basic',format:'text',include_usage:false}),signal:AbortSignal.timeout(15000)});
  if(!response.ok)throw new Error(`Tavily 본문 추출 오류 (${response.status})`);

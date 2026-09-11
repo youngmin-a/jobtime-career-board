@@ -1,7 +1,7 @@
 import {allowMutation} from "@/lib/http";
 import {Conflict} from "@/lib/repository";
 import {addWorkspaceHeaders,storeForRequest} from "@/lib/store";
-import {validateApplication,fromOfficial,officialCompany,type Application} from "@/lib/applications";
+import {calendarEvents,validateApplication,fromOfficial,officialCompany,type Application} from "@/lib/applications";
 import {fetchCompany} from "@/lib/providers";
 import {resolveSelection} from "@/lib/search";
 import {candidateApplication} from "@/lib/search-types";
@@ -44,6 +44,28 @@ export async function POST(request:Request){
         const index=state.applications.findIndex(a=>a.id===input.id);if(index<0)throw new Error('공고를 찾지 못했습니다.');
         const changed=patchProgress(state.applications[index],input.patch);changed.updatedAt=new Date().toISOString();state.applications[index]=changed;return state;
       }
+      if(input.action==='toggle-favorite'){
+        const application=state.applications.find(a=>a.id===input.id);if(!application)throw new Error('공고를 찾지 못했습니다.');
+        if(typeof input.favorite!=='boolean')throw new Error('즐겨찾기 값을 확인해주세요.');application.favorite=input.favorite;application.updatedAt=new Date().toISOString();return state;
+      }
+      if(input.action==='toggle-preparation'){
+        const application=state.applications.find(a=>a.id===input.id);if(!application)throw new Error('공고를 찾지 못했습니다.');
+        const item=(application.preparationItems??[]).find(item=>item.id===input.preparationId);if(!item)throw new Error('준비 항목을 찾지 못했습니다.');
+        if(typeof input.completed!=='boolean')throw new Error('준비 항목 상태를 확인해주세요.');item.completedAt=input.completed?new Date().toISOString():null;application.updatedAt=new Date().toISOString();return state;
+      }
+      if(input.action==='set-reminder'){
+        const application=state.applications.find(a=>a.id===input.id);if(!application)throw new Error('공고를 찾지 못했습니다.');
+        if(typeof input.sourceKey!=='string'||input.sourceKey.length>250)throw new Error('리마인더 대상을 확인해주세요.');
+        if(!calendarEvents([application]).some(event=>event.sourceKey===input.sourceKey))throw new Error('리마인더 일정을 찾지 못했습니다.');
+        application.reminders={...application.reminders};
+        if(input.offsetDays===null)delete application.reminders[input.sourceKey];
+        else{if(![0,1,3].includes(input.offsetDays))throw new Error('리마인더 시점을 확인해주세요.');application.reminders[input.sourceKey]={offsetDays:input.offsetDays,acknowledgedAt:null,acknowledgedFor:null};}
+        return state;
+      }
+      if(input.action==='ack-reminder'){
+        const application=state.applications.find(a=>a.id===input.id);if(!application)throw new Error('공고를 찾지 못했습니다.');
+        if(typeof input.sourceKey!=='string'||!application.reminders?.[input.sourceKey])throw new Error('리마인더를 찾지 못했습니다.');const event=calendarEvents([application]).find(event=>event.sourceKey===input.sourceKey);if(!event)throw new Error('리마인더 일정을 찾지 못했습니다.');const point=event.schedule.start??event.schedule.end!;application.reminders[input.sourceKey].acknowledgedAt=new Date().toISOString();application.reminders[input.sourceKey].acknowledgedFor=point.date+'T'+(point.time??'date');return state;
+      }
       if(backup){state.applications=backup.applications;return state}
       if(input.action==="delete"){if(!state.applications.some(a=>a.id===input.id))throw new Error("공고를 찾지 못했습니다.");state.applications=state.applications.filter(a=>a.id!==input.id);return state}
       if(!["save","add-selected","save-selected","import-selected"].includes(input.action))throw new Error("지원하지 않는 요청입니다.");
@@ -57,6 +79,7 @@ export async function POST(request:Request){
       if(existing){
         if(input.expectedUpdatedAt!==undefined&&input.expectedUpdatedAt!==existing.updatedAt)throw new Conflict();
         a.origin=existing.origin;a.sourceName=existing.sourceName;a.provider=existing.provider;a.officialPostingId=existing.officialPostingId;a.evidence=existing.evidence;a.officialCheckedAt=existing.officialCheckedAt;a.officialRecruitmentSnapshot=existing.officialRecruitmentSnapshot;a.discoveredBy=existing.discoveredBy;a.discoveryUrl=existing.discoveryUrl;a.createdAt=existing.createdAt;
+        if(a.favorite===undefined)a.favorite=existing.favorite;if(a.preparationItems===undefined)a.preparationItems=existing.preparationItems;if(a.reminders===undefined)a.reminders=existing.reminders;if(a.fieldEvidence===undefined)a.fieldEvidence=existing.fieldEvidence;
         a.recruitmentOrigin=existing.origin!=="manual"?(JSON.stringify(a.recruitment)===JSON.stringify(existing.officialRecruitmentSnapshot)?existing.origin:"user_override"):"manual";
       }else if(!official){
         a.origin="manual";a.sourceName=undefined;a.provider=null;a.officialPostingId=null;a.evidence=null;a.officialCheckedAt=null;a.officialRecruitmentSnapshot=null;a.recruitmentOrigin="manual";a.createdAt=new Date().toISOString();

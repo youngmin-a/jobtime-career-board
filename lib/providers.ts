@@ -5,7 +5,7 @@ import { BANKS, parsePeriod, validPoint, type Company, type DatePoint, type Post
 // 원문 자동 추출을 허용하는 채용·공공기관 출처만 열어 둔다. 검색 결과의 임의 호스트를 서버가 방문하지 않는다.
 const allowedHosts = new Set(["kbstar.careerlink.kr","api.inhr.co.kr","ibk.incruit.com","ibk3.incruit.com","ibk4.incruit.com","nhbank.incruit.com","jlab.incruit.com","job.incruit.com","jrs.jobkorea.co.kr","www.jobkorea.co.kr","recruit.kdb.co.kr","im.recruiter.co.kr","shinhan.recruiter.co.kr","www.fss.or.kr","fine.fss.or.kr","www.kofia.or.kr","www.catch.co.kr","linkareer.com","www.linkareer.com","jasoseol.com","www.jasoseol.com","career.gnu.ac.kr","m.work.go.kr","www.invione.com"]);
 export function safePublicUrl(value:string){
- try{const u=new URL(value);if(u.protocol!=="https:"||u.port||u.username||u.password)return false;const host=u.hostname.toLowerCase();const octets=host.split('.').map(Number);const ipv4=octets.length===4&&octets.every(x=>Number.isInteger(x)&&x>=0&&x<=255);if(host==="localhost"||host.endsWith(".localhost")||host==="127.0.0.1"||host==="0.0.0.0"||host==="::1"||(ipv4&&(octets[0]===10||octets[0]===127||octets[0]===0||octets[0]===192&&octets[1]===168||octets[0]===172&&octets[1]>=16&&octets[1]<=31)))return false;return !!host}
+ try{const u=new URL(value);if(u.protocol!=="https:"||u.port||u.username||u.password)return false;const host=u.hostname.toLowerCase().replace(/^\[|\]$/g,'').replace(/\.+$/,'');const octets=host.split('.').map(Number);const ipv4=octets.length===4&&octets.every(x=>Number.isInteger(x)&&x>=0&&x<=255);if(!host||host.includes(':')||host==="localhost"||host.endsWith(".localhost")||host.endsWith(".local")||host.endsWith(".internal")||host==="metadata.google.internal"||host.endsWith('.nip.io')||host.endsWith('.sslip.io')||host.endsWith('.xip.io')||(ipv4&&(octets[0]===0||octets[0]===10||octets[0]===127||octets[0]===169&&octets[1]===254||octets[0]===172&&octets[1]>=16&&octets[1]<=31||octets[0]===192&&octets[1]===168||octets[0]===100&&octets[1]>=64&&octets[1]<=127||octets[0]>=224)))return false;return true}
  catch{return false}
 }
 export async function publicFetch(url: string, init: RequestInit = {}) {
@@ -29,7 +29,7 @@ export async function publicFetch(url: string, init: RequestInit = {}) {
   }
   throw new Error("공식 사이트 이동 횟수가 초과됐습니다.");
 }
-function html(result: {body:Buffer;headers:Headers}) {
+export function publicHtml(result: {body:Buffer;headers:Headers}) {
   const hint=result.headers.get("content-type")+result.body.subarray(0,1500).toString("ascii");
   return new TextDecoder(/euc-kr|ks_c_5601|cp949/i.test(hint)?"euc-kr":"utf-8").decode(result.body);
 }
@@ -54,7 +54,7 @@ export function parseKb(data: unknown, company:Company) {
   });
 }
 async function kb(company:Company) {
-  const homepage=html(await publicFetch("https://kbstar.careerlink.kr/"));
+  const homepage=publicHtml(await publicFetch("https://kbstar.careerlink.kr/"));
   const $=load(homepage), data=JSON.parse($("#__NEXT_DATA__").text());
   const coNo=data.props?.pageProps?.middlewareData?.companyDataFromSubdomain?.coInf?.coNo;
   if(typeof coNo!=="string" || !/^CO\d+$/.test(coNo))throw new Error("국민은행 공식 기업 정보를 확인하지 못했습니다.");
@@ -93,8 +93,8 @@ export function parseIbkDetail(source:string) {
 async function ibk(company:Company) {
   const landing=await publicFetch("https://ibk.incruit.com/");
   const cookie=(landing.headers.getSetCookie?.()??[]).map(v=>v.split(";")[0]).join("; ");
-  let source=html(landing);
-  if(!source.includes("viewhire.asp"))source=html(await publicFetch("https://ibk.incruit.com/index_main_2025.asp",{headers:{Cookie:cookie}}));
+  let source=publicHtml(landing);
+  if(!source.includes("viewhire.asp"))source=publicHtml(await publicFetch("https://ibk.incruit.com/index_main_2025.asp",{headers:{Cookie:cookie}}));
   const $=load(source), links=new Map<string,string>();
   $("a[href*='viewhire.asp']").each((_,el)=>{
     const a=$(el),href=a.attr("href");if(!href)return;
@@ -113,7 +113,7 @@ async function ibk(company:Company) {
         const response=await publicFetch(host+"/");
         sessionCookie=(response.headers.getSetCookie?.()??[]).map(v=>v.split(";")[0]).join("; ");
       }
-      const detail=html(await publicFetch(url,{headers:{Cookie:sessionCookie,Referer:host+"/"}}));
+      const detail=publicHtml(await publicFetch(url,{headers:{Cookie:sessionCookie,Referer:host+"/"}}));
       const period=parseIbkDetail(detail);
       postings.push(record(company,title,url,period?.start??null,period?.end??null,period?.evidence??"접수기간을 자동으로 확인하지 못했습니다. 공식 원문에서 확인해주세요."));
     } catch { errors.push(title); }
@@ -124,7 +124,7 @@ async function ibk(company:Company) {
 }
 export async function fetchCompany(company:Company) {
   if(company.provider==="kb")return kb(company);
-  if(company.provider==="nh")return {postings:parseNh(html(await publicFetch("https://nhbank.incruit.com/main/index.asp")),company),warning:"신규직원 채용 메인 공고 기준입니다. 범농협 수시 채용은 포함되지 않습니다."};
+  if(company.provider==="nh")return {postings:parseNh(publicHtml(await publicFetch("https://nhbank.incruit.com/main/index.asp")),company),warning:"신규직원 채용 메인 공고 기준입니다. 범농협 수시 채용은 포함되지 않습니다."};
   if(company.provider==="ibk")return ibk(company);
   throw new Error("이 기업은 아직 자동 조회를 지원하지 않습니다. 공고를 직접 추가할 수 있습니다.");
 }

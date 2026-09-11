@@ -65,3 +65,10 @@ PRD.md, DESIGN.md, PLAN.md, MIGRATION.md, README.md, package.json, tsconfig.json
 
 ## 2026-09-08 리디자인 검증
 도메인 테스트 15개, typecheck, lint, production build 통과. 실제 칸반 드래그 후 저장 및 기존 전형 완료 상태 보존 확인. 모집 기간 반복 제거와 실제 전형 일정 표시 확인. 현대자동차·청년인턴·우리은행 실제 검색, 선택한 한 건 편집 저장 및 삭제 확인. 기존 로컬 공고 보존, 검증용 공고 정리 완료. 공개 전환 결과는 DEPLOYMENT.md에 기록.
+
+## 2026-09-11 캘린더 실행·공고 분석 확장
+- `npm test`: 35/35 통과. 기존 v1/v2·D1 실패 원복과 함께 준비 항목 이동, 의미 색상 분류, ICS 날짜/UID, 내부 주소 차단, 붙여넣기 출처, AI 날짜 근거 검증을 확인했다.
+- `npm run typecheck`, `npm run lint`, `npm run build`, `git diff --check`: 통과. Vinext의 동적 라우트 분류 안내만 있으며 빌드 실패는 없다.
+- 로컬 브라우저에서 새 제목과 이름 진입 화면 렌더링을 확인했다. 관리형 로컬 D1에 앱 마이그레이션이 준비되지 않아 새 테스트 이름의 저장 UI 검증은 중단했으며 운영 데이터로 대체 테스트하지 않았다.
+- 신규 SQL은 `analysis_usage` 호출 카운터 테이블만 추가한다. 기존 `workspace_state`, 백업, 공고 payload 구조는 변경하지 않는다. 원격 마이그레이션과 운영 URL 결과는 GitHub Actions 완료 후 확인한다.
+- 실제 OpenAI 구조화 활성 여부는 배포 Worker의 Secret 상태로 판정하며, 활성 확인 전에는 원문 규칙 분석 대체 경로만 검증 완료로 기록한다. 토큰 재설정은 사용하지 않았다.

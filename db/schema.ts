@@ -1,4 +1,4 @@
-import {index,integer,sqliteTable,text} from "drizzle-orm/sqlite-core";
+import {index,integer,primaryKey,sqliteTable,text} from "drizzle-orm/sqlite-core";
 export const appState=sqliteTable("app_state",{id:integer("id").primaryKey(),payload:text("payload").notNull(),updatedAt:text("updated_at").notNull()});
 export const jobStateV2=sqliteTable("job_state_v2",{id:integer("id").primaryKey(),payload:text("payload").notNull(),revision:integer("revision").notNull()});
 export const jobBackups=sqliteTable("job_backups",{id:text("id").primaryKey(),payload:text("payload").notNull(),reason:text("reason").notNull(),createdAt:text("created_at").notNull()});
@@ -7,3 +7,4 @@ export const workspaceBackups=sqliteTable("workspace_backups",{id:text("id").pri
 export const namedSpaces=sqliteTable('named_spaces',{workspaceId:text('workspace_id').primaryKey(),nameKey:text('name_key').notNull().unique(),displayName:text('display_name').notNull(),createdAt:text('created_at').notNull()});
 export const nameSessions=sqliteTable('name_sessions',{tokenHash:text('token_hash').primaryKey(),workspaceId:text('workspace_id').notNull().references(()=>namedSpaces.workspaceId),sessionTag:text('session_tag').notNull(),expiresAt:integer('expires_at').notNull()},t=>[index('name_sessions_expiry_idx').on(t.expiresAt)]);
 export const nameImports=sqliteTable('name_imports',{sourceWorkspaceId:text('source_workspace_id').primaryKey(),targetWorkspaceId:text('target_workspace_id').notNull(),importId:text('import_id').notNull().unique(),createdAt:text('created_at').notNull()});
+export const analysisUsage=sqliteTable('analysis_usage',{workspaceId:text('workspace_id').notNull(),windowStart:integer('window_start').notNull(),count:integer('count').notNull()},table=>[primaryKey({columns:[table.workspaceId,table.windowStart]})]);
